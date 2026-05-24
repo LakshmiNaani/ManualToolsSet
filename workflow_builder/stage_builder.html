@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stage Builder — workflow_builder</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 14px;
+      background: #f0f2f5;
+      color: #2d3748;
+      line-height: 1.5;
+    }
+
+    /* ---- Header ---- */
+    header {
+      background: #1a202c;
+      color: #e2e8f0;
+      padding: 0.6rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      height: 44px;
+    }
+    header h1 { font-size: 1rem; font-weight: 700; }
+    .subtitle { font-size: 0.72rem; color: #718096; margin-left: 0.7rem; }
+
+    /* ---- Main 2-col layout ---- */
+    #app {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      height: calc(100vh - 44px);
+    }
+
+    /* ---- Form panel (left) ---- */
+    #form-panel {
+      overflow-y: auto;
+      padding: 1.25rem;
+      background: #f7fafc;
+      border-right: 1px solid #e2e8f0;
+    }
+
+    /* ---- Preview panel (right) ---- */
+    #preview-panel {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background: #1a202c;
+    }
+
+    #preview-header {
+      padding: 0.6rem 0.9rem;
+      border-bottom: 1px solid #2d3748;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+
+    #suggested-filename {
+      flex: 1;
+      font-family: monospace;
+      font-size: 0.78rem;
+      color: #68d391;
+      background: #2d3748;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #preview-output {
+      flex: 1;
+      resize: none;
+      background: #1a202c;
+      color: #e2e8f0;
+      font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      font-size: 0.82rem;
+      line-height: 1.65;
+      padding: 1rem;
+      border: none;
+      outline: none;
+      width: 100%;
+    }
+
+    /* ---- Field groups ---- */
+    .field-group { margin-bottom: 0.9rem; }
+    .field-group label {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #4a5568;
+      margin-bottom: 0.28rem;
+    }
+    .field-group input[type="text"],
+    .field-group textarea {
+      width: 100%;
+      padding: 0.4rem 0.55rem;
+      border: 1px solid #cbd5e0;
+      border-radius: 5px;
+      font-family: inherit;
+      font-size: 0.875rem;
+      color: #2d3748;
+      background: #fff;
+      transition: border-color 0.15s;
+    }
+    .field-group input:focus,
+    .field-group textarea:focus {
+      outline: none;
+      border-color: #63b3ed;
+      box-shadow: 0 0 0 3px rgba(99,179,237,0.15);
+    }
+    .field-group textarea { resize: vertical; }
+
+    /* ---- Step cards ---- */
+    .step-card {
+      background: #fff;
+      border-radius: 8px;
+      border-left: 4px solid #63b3ed;
+      padding: 0.9rem;
+      margin-bottom: 0.9rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+    }
+    .step-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+    .step-num { font-weight: 700; color: #2b6cb0; font-size: 0.875rem; }
+
+    .step-card .field-group input[type="text"],
+    .step-card .field-group textarea { background: #f7fafc; }
+
+    /* ---- Block cards ---- */
+    .block-card {
+      background: #f7fafc;
+      border-radius: 6px;
+      border-left: 3px solid #cbd5e0;
+      padding: 0.65rem;
+      margin-bottom: 0.5rem;
+      transition: border-color 0.15s;
+    }
+    .block-card[data-block-type="bash"]    { border-left-color: #48bb78; }
+    .block-card[data-block-type="text"]    { border-left-color: #a0aec0; }
+    .block-card[data-block-type="mermaid"] { border-left-color: #9f7aea; }
+
+    .block-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.45rem;
+    }
+    .block-header label { font-size: 0.78rem; font-weight: 600; color: #4a5568; }
+    .block-header select {
+      margin-left: 0.35rem;
+      font-size: 0.8rem;
+      padding: 0.18rem 0.28rem;
+      border: 1px solid #cbd5e0;
+      border-radius: 4px;
+      background: #fff;
+    }
+
+    .block-card textarea.block-text {
+      width: 100%;
+      font-family: "Cascadia Code", Consolas, monospace;
+      font-size: 0.8rem;
+      padding: 0.45rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
+      resize: vertical;
+      background: #1a202c;
+      color: #e2e8f0;
+      line-height: 1.5;
+    }
+    .block-card textarea.block-text:focus { outline: none; border-color: #63b3ed; }
+
+    /* ---- Mermaid builder ---- */
+    .diagram-type-row {
+      font-size: 0.8rem;
+      color: #4a5568;
+      margin-bottom: 0.55rem;
+    }
+    .diagram-type-row select {
+      margin-left: 0.35rem;
+      font-size: 0.8rem;
+      padding: 0.2rem 0.3rem;
+      border: 1px solid #cbd5e0;
+      border-radius: 4px;
+      background: #fff;
+    }
+
+    .builder-section {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 5px;
+      padding: 0.55rem;
+      margin-bottom: 0.5rem;
+    }
+    .builder-section > .section-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #4a5568;
+      display: block;
+      margin-bottom: 0.4rem;
+    }
+
+    /* Row inputs */
+    .node-row, .edge-row, .actor-row, .msg-row {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      margin-bottom: 0.3rem;
+      flex-wrap: wrap;
+    }
+    .node-row input, .edge-row input, .actor-row input, .msg-row input {
+      padding: 0.22rem 0.35rem;
+      border: 1px solid #cbd5e0;
+      border-radius: 4px;
+      font-size: 0.78rem;
+      font-family: monospace;
+      background: #fff;
+    }
+    .node-id { width: 56px; }
+    .node-label { flex: 1; min-width: 70px; }
+    .node-shape, .msg-arrow {
+      font-size: 0.75rem;
+      padding: 0.2rem 0.25rem;
+      border: 1px solid #cbd5e0;
+      border-radius: 4px;
+      background: #fff;
+    }
+    .edge-from, .edge-to, .msg-from, .msg-to {
+      font-size: 0.75rem;
+      padding: 0.2rem 0.3rem;
+      border: 1px solid #cbd5e0;
+      border-radius: 4px;
+      min-width: 56px;
+      background: #fff;
+    }
+    .edge-label, .msg-text { flex: 1; min-width: 70px; }
+    .actor-name { flex: 1; }
+    .arrow-sym { color: #718096; font-weight: 700; flex-shrink: 0; }
+
+    /* Generated source collapsible */
+    .mermaid-src-details { margin: 0.5rem 0 0.4rem; }
+    .mermaid-src-details summary {
+      font-size: 0.72rem;
+      color: #718096;
+      cursor: pointer;
+      user-select: none;
+    }
+    .mermaid-src-details summary:hover { color: #4a5568; }
+    textarea.mermaid-src {
+      width: 100%;
+      font-family: monospace;
+      font-size: 0.75rem;
+      background: #2d3748;
+      color: #e2e8f0;
+      border: none;
+      border-radius: 4px;
+      padding: 0.4rem;
+      resize: vertical;
+      margin-top: 0.3rem;
+      display: block;
+    }
+
+    /* Live preview */
+    .mermaid-preview-wrap {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 5px;
+      padding: 0.75rem;
+      min-height: 72px;
+      text-align: center;
+      overflow-x: auto;
+    }
+    .mermaid-live { display: inline-block; max-width: 100%; }
+
+    /* ---- Buttons ---- */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.32rem 0.75rem;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      font-family: inherit;
+      transition: background 0.15s;
+    }
+    .btn-ghost  { background: #e2e8f0; color: #4a5568; }
+    .btn-ghost:hover  { background: #cbd5e0; }
+    .btn-success { background: #38a169; color: #fff; }
+    .btn-success:hover { background: #276749; }
+    .btn-danger { background: #fff5f5; color: #c53030; border: 1px solid #fed7d7; }
+    .btn-danger:hover { background: #fed7d7; }
+    .btn-sm { padding: 0.2rem 0.5rem; font-size: 0.75rem; }
+    .btn-link {
+      background: none;
+      color: #3182ce;
+      padding: 0.18rem 0.4rem;
+      font-size: 0.78rem;
+      border: 1px dashed #bee3f8;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 600;
+    }
+    .btn-link:hover { background: #ebf8ff; }
+    .btn-x {
+      background: none;
+      color: #a0aec0;
+      border: none;
+      padding: 0.1rem 0.3rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+      border-radius: 3px;
+      line-height: 1;
+      font-family: inherit;
+      flex-shrink: 0;
+    }
+    .btn-x:hover { background: #fed7d7; color: #c53030; }
+
+    #add-step-btn {
+      width: 100%;
+      padding: 0.5rem;
+      background: #ebf8ff;
+      color: #2b6cb0;
+      border: 1px dashed #90cdf4;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: inherit;
+      transition: background 0.15s;
+      margin-top: 0.25rem;
+    }
+    #add-step-btn:hover { background: #bee3f8; }
+
+    .add-block-row { margin-top: 0.4rem; }
+
+    .blocks-container { margin-top: 0.5rem; }
+
+    /* File prefix row */
+    .file-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid #e2e8f0;
+    }
+    .file-row label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #4a5568;
+      white-space: nowrap;
+    }
+    .file-row input {
+      width: 56px;
+      padding: 0.35rem 0.45rem;
+      border: 1px solid #cbd5e0;
+      border-radius: 5px;
+      font-family: monospace;
+      font-size: 0.875rem;
+    }
+    .file-row input:focus { outline: none; border-color: #63b3ed; }
+    #fn-inline {
+      font-family: monospace;
+      font-size: 0.8rem;
+      color: #3182ce;
+      background: #ebf8ff;
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+    }
+
+    .copied { color: #68d391 !important; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div style="display:flex;align-items:center">
+    <h1>Stage Builder</h1>
+    <span class="subtitle">Create .md stage files for workflow_builder</span>
+  </div>
+  <button class="btn btn-ghost btn-sm" id="clear-btn">Clear All</button>
+</header>
+
+<div id="app">
+
+  <!-- LEFT: Form -->
+  <div id="form-panel">
+    <div class="field-group">
+      <label>Stage Name</label>
+      <input type="text" id="stage-name" placeholder="e.g. Environment Setup">
+    </div>
+    <div class="field-group">
+      <label>Stage Description</label>
+      <textarea id="stage-desc" rows="3" placeholder="Briefly describe what this stage does and why it matters..."></textarea>
+    </div>
+
+    <div id="steps-container"></div>
+    <button id="add-step-btn" data-action="add-step">+ Add Step</button>
+
+    <div class="file-row">
+      <label for="file-prefix">File prefix</label>
+      <input type="text" id="file-prefix" value="01" placeholder="01">
+      <span style="font-size:0.78rem;color:#718096">→ <span id="fn-inline">01_untitled.md</span></span>
+    </div>
+  </div>
+
+  <!-- RIGHT: Preview -->
+  <div id="preview-panel">
+    <div id="preview-header">
+      <span id="suggested-filename">01_untitled.md</span>
+      <div style="display:flex;gap:0.4rem;flex-shrink:0">
+        <button class="btn btn-ghost btn-sm" id="copy-btn">Copy Markdown</button>
+        <button class="btn btn-success btn-sm" id="download-btn">⬇ Download .md</button>
+      </div>
+    </div>
+    <textarea id="preview-output" readonly spellcheck="false"></textarea>
+  </div>
+
+</div>
+
+<!-- ===================== TEMPLATES ===================== -->
+
+<template id="step-tpl">
+  <div class="step-card">
+    <div class="step-header">
+      <span class="step-num">Step 1</span>
+      <button class="btn btn-danger btn-sm" data-action="remove-step">✕ Remove Step</button>
+    </div>
+    <div class="field-group">
+      <label>Step Title</label>
+      <input type="text" class="step-title" placeholder="e.g. Create Output Directory">
+    </div>
+    <div class="field-group">
+      <label>Step Description <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
+      <textarea class="step-desc" rows="2" placeholder="What this step does and why it's needed..."></textarea>
+    </div>
+    <div class="blocks-container"></div>
+    <div class="add-block-row">
+      <button class="btn-link" data-action="add-block">+ Add Block</button>
+    </div>
+  </div>
+</template>
+
+<template id="block-tpl">
+  <div class="block-card" data-block-type="bash">
+    <div class="block-header">
+      <label>Type:
+        <select class="block-type">
+          <option value="bash">bash / command</option>
+          <option value="text">plain text</option>
+          <option value="mermaid">mermaid diagram</option>
+        </select>
+      </label>
+      <button class="btn-x" data-action="remove-block" title="Remove block">✕</button>
+    </div>
+
+    <!-- bash / text -->
+    <div class="plain-area">
+      <textarea class="block-text" rows="4" placeholder="Enter bash command... (use {{PARAM=default}} for parameters)"></textarea>
+    </div>
+
+    <!-- mermaid builder -->
+    <div class="mermaid-area" hidden>
+      <div class="diagram-type-row">
+        Diagram type:
+        <select class="diagram-subtype">
+          <option value="flowchart TD">Flowchart (top → down)</option>
+          <option value="flowchart LR">Flowchart (left → right)</option>
+          <option value="sequence">Sequence diagram</option>
+        </select>
+      </div>
+
+      <!-- Flowchart builder -->
+      <div class="fc-builder">
+        <div class="builder-section">
+          <span class="section-label">Nodes</span>
+          <div class="nodes-list"></div>
+          <button class="btn-link" data-action="add-node" style="margin-top:0.3rem;font-size:0.75rem">+ Add Node</button>
+        </div>
+        <div class="builder-section">
+          <span class="section-label">Edges (connections)</span>
+          <div class="edges-list"></div>
+          <button class="btn-link" data-action="add-edge" style="margin-top:0.3rem;font-size:0.75rem">+ Add Edge</button>
+        </div>
+      </div>
+
+      <!-- Sequence builder -->
+      <div class="seq-builder" hidden>
+        <div class="builder-section">
+          <span class="section-label">Actors</span>
+          <div class="actors-list"></div>
+          <button class="btn-link" data-action="add-actor" style="margin-top:0.3rem;font-size:0.75rem">+ Add Actor</button>
+        </div>
+        <div class="builder-section">
+          <span class="section-label">Messages</span>
+          <div class="messages-list"></div>
+          <button class="btn-link" data-action="add-message" style="margin-top:0.3rem;font-size:0.75rem">+ Add Message</button>
+        </div>
+      </div>
+
+      <!-- Generated source (read-only peek) -->
+      <details class="mermaid-src-details">
+        <summary>View generated Mermaid source</summary>
+        <textarea class="mermaid-src" rows="5" readonly></textarea>
+      </details>
+
+      <!-- Live diagram preview -->
+      <div class="mermaid-preview-wrap">
+        <div class="mermaid-live">
+          <span style="color:#a0aec0;font-size:0.78rem">Add nodes to preview diagram</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="node-row-tpl">
+  <div class="node-row">
+    <input type="text" class="node-id" placeholder="ID (A)" maxlength="20" title="Letters/numbers only">
+    <input type="text" class="node-label" placeholder="Label text">
+    <select class="node-shape">
+      <option value="rect">[ ] rect</option>
+      <option value="rounded">( ) rounded</option>
+      <option value="diamond">{ } diamond</option>
+      <option value="circle">(()) circle</option>
+    </select>
+    <button class="btn-x" data-action="remove-node">✕</button>
+  </div>
+</template>
+
+<template id="edge-row-tpl">
+  <div class="edge-row">
+    <select class="edge-from"><option value="">From</option></select>
+    <span class="arrow-sym">→</span>
+    <select class="edge-to"><option value="">To</option></select>
+    <input type="text" class="edge-label" placeholder="label (optional)">
+    <button class="btn-x" data-action="remove-edge">✕</button>
+  </div>
+</template>
+
+<template id="actor-row-tpl">
+  <div class="actor-row">
+    <input type="text" class="actor-name" placeholder="Actor name (e.g. User, Server)">
+    <button class="btn-x" data-action="remove-actor">✕</button>
+  </div>
+</template>
+
+<template id="msg-row-tpl">
+  <div class="msg-row">
+    <select class="msg-from"><option value="">From</option></select>
+    <select class="msg-arrow">
+      <option value="->">&rarr; solid (request)</option>
+      <option value="-->">&rarr; dashed (response)</option>
+    </select>
+    <select class="msg-to"><option value="">To</option></select>
+    <input type="text" class="msg-text" placeholder="Message text">
+    <button class="btn-x" data-action="remove-message">✕</button>
+  </div>
+</template>
+
+<!-- ===================== SCRIPTS ===================== -->
+
+<script>
+  mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'loose' });
+</script>
+
+<script>
+(function () {
+  'use strict';
+
+  var mermaidIdCounter = 0;
+
+  // ---- DOM helpers ----
+
+  function qs(sel, ctx)  { return (ctx || document).querySelector(sel); }
+  function qsa(sel, ctx) { return (ctx || document).querySelectorAll(sel); }
+
+  function clone(tplId) {
+    var tpl = document.getElementById(tplId);
+    return document.importNode(tpl.content, true);
+  }
+
+  // ---- Utilities ----
+
+  function slugify(s) {
+    return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'untitled';
+  }
+
+  // ---- Mermaid source generators ----
+
+  function shapeWrap(id, label, shape) {
+    var l = label || id;
+    switch (shape) {
+      case 'rounded': return id + '(' + l + ')';
+      case 'diamond': return id + '{' + l + '}';
+      case 'circle':  return id + '((' + l + '))';
+      default:        return id + '[' + l + ']';
+    }
+  }
+
+  function generateFlowchartSrc(blockCard, direction) {
+    var lines = [direction];
+    qsa('.node-row', blockCard).forEach(function (row) {
+      var id    = qs('.node-id',    row).value.trim();
+      var label = qs('.node-label', row).value.trim();
+      var shape = qs('.node-shape', row).value;
+      if (!id) return;
+      lines.push('    ' + shapeWrap(id, label, shape));
+    });
+    qsa('.edge-row', blockCard).forEach(function (row) {
+      var from  = qs('.edge-from',  row).value;
+      var to    = qs('.edge-to',    row).value;
+      var label = qs('.edge-label', row).value.trim();
+      if (!from || !to) return;
+      var conn = label ? from + ' -->|' + label + '| ' + to : from + ' --> ' + to;
+      lines.push('    ' + conn);
+    });
+    return lines.join('\n');
+  }
+
+  function generateSequenceSrc(blockCard) {
+    var lines = ['sequenceDiagram'];
+    qsa('.actor-row .actor-name', blockCard).forEach(function (input) {
+      var name = input.value.trim();
+      if (!name) return;
+      var p = name.indexOf(' ') >= 0 ? '"' + name + '"' : name;
+      lines.push('    participant ' + p);
+    });
+    qsa('.msg-row', blockCard).forEach(function (row) {
+      var from  = qs('.msg-from',  row).value;
+      var to    = qs('.msg-to',    row).value;
+      var arrow = qs('.msg-arrow', row).value;
+      var msg   = qs('.msg-text',  row).value.trim();
+      if (!from || !to || !msg) return;
+      var a = arrow === '->' ? '->>' : '-->>';
+      lines.push('    ' + from + a + to + ': ' + msg);
+    });
+    return lines.join('\n');
+  }
+
+  // ---- Dropdown sync ----
+
+  function syncDropdowns(selects, options) {
+    selects.forEach(function (sel) {
+      var cur = sel.value;
+      sel.innerHTML = '<option value="">--</option>';
+      options.forEach(function (opt) {
+        var o = document.createElement('option');
+        o.value = opt;
+        o.textContent = opt;
+        if (opt === cur) o.selected = true;
+        sel.appendChild(o);
+      });
+    });
+  }
+
+  function syncEdgeDropdowns(blockCard) {
+    var ids = [];
+    qsa('.node-row .node-id', blockCard).forEach(function (el) {
+      var v = el.value.trim();
+      if (v) ids.push(v);
+    });
+    syncDropdowns(Array.from(qsa('.edge-from, .edge-to', blockCard)), ids);
+  }
+
+  function syncMessageDropdowns(blockCard) {
+    var names = [];
+    qsa('.actor-row .actor-name', blockCard).forEach(function (el) {
+      var v = el.value.trim();
+      if (v) names.push(v);
+    });
+    syncDropdowns(Array.from(qsa('.msg-from, .msg-to', blockCard)), names);
+  }
+
+  // ---- Mermaid live preview ----
+
+  async function renderMermaidPreview(blockCard, source) {
+    var div = qs('.mermaid-live', blockCard);
+    if (!source || !source.trim()) {
+      div.innerHTML = '<span style="color:#a0aec0;font-size:0.75rem">Add content to see preview</span>';
+      return;
+    }
+    try {
+      var id = 'mmd-' + (++mermaidIdCounter);
+      var result = await mermaid.render(id, source);
+      div.innerHTML = result.svg || result;
+    } catch (e) {
+      div.innerHTML = '<span style="color:#fc8181;font-size:0.75rem">⚠ Check diagram syntax</span>';
+    }
+  }
+
+  async function updateMermaidForBlock(blockCard) {
+    var subtype = qs('.diagram-subtype', blockCard).value;
+    var source = subtype === 'sequence'
+      ? generateSequenceSrc(blockCard)
+      : generateFlowchartSrc(blockCard, subtype);
+
+    qs('.mermaid-src', blockCard).value = source;
+    await renderMermaidPreview(blockCard, source);
+    updatePreview();
+  }
+
+  // ---- Markdown generation ----
+
+  function generateMarkdown() {
+    var name = qs('#stage-name').value.trim() || 'Untitled Stage';
+    var desc = qs('#stage-desc').value.trim();
+
+    var md = '# Stage: ' + name + '\n';
+    if (desc) md += desc + '\n';
+
+    qsa('.step-card').forEach(function (card, i) {
+      var title    = qs('.step-title', card).value.trim() || 'Untitled Step';
+      var stepDesc = qs('.step-desc',  card).value.trim();
+      md += '\n### Step ' + (i + 1) + ': ' + title + '\n';
+      if (stepDesc) md += stepDesc + '\n';
+
+      qsa('.block-card', card).forEach(function (block) {
+        var type    = qs('.block-type', block).value;
+        var content = type === 'mermaid'
+          ? qs('.mermaid-src', block).value.trim()
+          : qs('.block-text',  block).value.trim();
+
+        if (!content) return;
+
+        if (type === 'text') {
+          md += '\n' + content + '\n';
+        } else {
+          md += '\n```' + type + '\n' + content + '\n```\n';
+        }
+      });
+    });
+
+    return md;
+  }
+
+  function updatePreview() {
+    qs('#preview-output').value = generateMarkdown();
+
+    var prefix = qs('#file-prefix').value.trim() || '01';
+    var slug   = slugify(qs('#stage-name').value.trim());
+    var fname  = prefix + '_' + slug + '.md';
+    qs('#suggested-filename').textContent = fname;
+    qs('#fn-inline').textContent = fname;
+  }
+
+  // ---- Steps ----
+
+  function renumberSteps() {
+    qsa('.step-card').forEach(function (card, i) {
+      qs('.step-num', card).textContent = 'Step ' + (i + 1);
+    });
+  }
+
+  function addStep() {
+    qs('#steps-container').appendChild(clone('step-tpl'));
+    renumberSteps();
+    updatePreview();
+  }
+
+  function removeStep(card) {
+    card.remove();
+    renumberSteps();
+    updatePreview();
+  }
+
+  // ---- Blocks ----
+
+  function addBlock(stepCard) {
+    qs('.blocks-container', stepCard).appendChild(clone('block-tpl'));
+    updatePreview();
+  }
+
+  function removeBlock(blockCard) {
+    blockCard.remove();
+    updatePreview();
+  }
+
+  function toggleBlockType(blockCard, type) {
+    blockCard.dataset.blockType = type;
+    var plainArea   = qs('.plain-area',   blockCard);
+    var mermaidArea = qs('.mermaid-area', blockCard);
+
+    if (type === 'mermaid') {
+      plainArea.hidden   = true;
+      mermaidArea.hidden = false;
+      if (qsa('.node-row', blockCard).length === 0) {
+        addNode(blockCard);
+        addNode(blockCard);
+      }
+      updateMermaidForBlock(blockCard);
+    } else {
+      plainArea.hidden   = false;
+      mermaidArea.hidden = true;
+      qs('.block-text', blockCard).placeholder = type === 'bash'
+        ? 'Enter bash command... (use {{PARAM=default}} for parameters)'
+        : 'Enter plain text...';
+      updatePreview();
+    }
+  }
+
+  function toggleDiagramSubtype(blockCard, subtype) {
+    var fcBuilder  = qs('.fc-builder',  blockCard);
+    var seqBuilder = qs('.seq-builder', blockCard);
+
+    if (subtype === 'sequence') {
+      fcBuilder.hidden  = true;
+      seqBuilder.hidden = false;
+      if (qsa('.actor-row', blockCard).length === 0) {
+        addActor(blockCard);
+        addActor(blockCard);
+      }
+    } else {
+      fcBuilder.hidden  = false;
+      seqBuilder.hidden = true;
+      if (qsa('.node-row', blockCard).length === 0) {
+        addNode(blockCard);
+        addNode(blockCard);
+      }
+    }
+    updateMermaidForBlock(blockCard);
+  }
+
+  // ---- Nodes ----
+
+  function addNode(blockCard) {
+    qs('.nodes-list', blockCard).appendChild(clone('node-row-tpl'));
+    syncEdgeDropdowns(blockCard);
+  }
+
+  function removeNode(nodeRow) {
+    var bc = nodeRow.closest('.block-card');
+    nodeRow.remove();
+    syncEdgeDropdowns(bc);
+    updateMermaidForBlock(bc);
+  }
+
+  // ---- Edges ----
+
+  function addEdge(blockCard) {
+    qs('.edges-list', blockCard).appendChild(clone('edge-row-tpl'));
+    syncEdgeDropdowns(blockCard);
+  }
+
+  function removeEdge(edgeRow) {
+    var bc = edgeRow.closest('.block-card');
+    edgeRow.remove();
+    updateMermaidForBlock(bc);
+  }
+
+  // ---- Actors ----
+
+  function addActor(blockCard) {
+    qs('.actors-list', blockCard).appendChild(clone('actor-row-tpl'));
+    syncMessageDropdowns(blockCard);
+  }
+
+  function removeActor(actorRow) {
+    var bc = actorRow.closest('.block-card');
+    actorRow.remove();
+    syncMessageDropdowns(bc);
+    updateMermaidForBlock(bc);
+  }
+
+  // ---- Messages ----
+
+  function addMessage(blockCard) {
+    qs('.messages-list', blockCard).appendChild(clone('msg-row-tpl'));
+    syncMessageDropdowns(blockCard);
+  }
+
+  function removeMessage(msgRow) {
+    var bc = msgRow.closest('.block-card');
+    msgRow.remove();
+    updateMermaidForBlock(bc);
+  }
+
+  // ---- Event delegation ----
+
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    e.preventDefault();
+
+    var action = btn.dataset.action;
+    switch (action) {
+      case 'add-step':      addStep(); break;
+      case 'remove-step':   removeStep(btn.closest('.step-card')); break;
+      case 'add-block':     addBlock(btn.closest('.step-card')); break;
+      case 'remove-block':  removeBlock(btn.closest('.block-card')); break;
+      case 'add-node':
+        addNode(btn.closest('.block-card'));
+        updateMermaidForBlock(btn.closest('.block-card'));
+        break;
+      case 'remove-node':   removeNode(btn.closest('.node-row')); break;
+      case 'add-edge':      addEdge(btn.closest('.block-card')); break;
+      case 'remove-edge':   removeEdge(btn.closest('.edge-row')); break;
+      case 'add-actor':
+        addActor(btn.closest('.block-card'));
+        updateMermaidForBlock(btn.closest('.block-card'));
+        break;
+      case 'remove-actor':  removeActor(btn.closest('.actor-row')); break;
+      case 'add-message':   addMessage(btn.closest('.block-card')); break;
+      case 'remove-message': removeMessage(btn.closest('.msg-row')); break;
+    }
+  });
+
+  document.addEventListener('input', function (e) {
+    var blockCard = e.target.closest('.block-card');
+    var inMermaid = blockCard && !qs('.mermaid-area', blockCard).hidden;
+
+    if (inMermaid) {
+      if (e.target.classList.contains('node-id'))     syncEdgeDropdowns(blockCard);
+      if (e.target.classList.contains('actor-name'))  syncMessageDropdowns(blockCard);
+      updateMermaidForBlock(blockCard);
+    } else {
+      updatePreview();
+    }
+  });
+
+  document.addEventListener('change', function (e) {
+    if (e.target.classList.contains('block-type')) {
+      toggleBlockType(e.target.closest('.block-card'), e.target.value);
+      return;
+    }
+    if (e.target.classList.contains('diagram-subtype')) {
+      toggleDiagramSubtype(e.target.closest('.block-card'), e.target.value);
+      return;
+    }
+    var blockCard = e.target.closest('.block-card');
+    if (blockCard && !qs('.mermaid-area', blockCard).hidden) {
+      updateMermaidForBlock(blockCard);
+    } else {
+      updatePreview();
+    }
+  });
+
+  // ---- Copy ----
+
+  qs('#copy-btn').addEventListener('click', function () {
+    var btn  = this;
+    var text = qs('#preview-output').value;
+
+    function flash() {
+      btn.textContent = '✓ Copied!';
+      btn.classList.add('copied');
+      setTimeout(function () {
+        btn.textContent = 'Copy Markdown';
+        btn.classList.remove('copied');
+      }, 1800);
+    }
+
+    navigator.clipboard.writeText(text).then(flash).catch(function () {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      flash();
+    });
+  });
+
+  // ---- Download ----
+
+  qs('#download-btn').addEventListener('click', function () {
+    var md    = qs('#preview-output').value;
+    var fname = qs('#suggested-filename').textContent;
+    var blob  = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+    var url   = URL.createObjectURL(blob);
+    var a     = document.createElement('a');
+    a.href     = url;
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  });
+
+  // ---- Clear ----
+
+  qs('#clear-btn').addEventListener('click', function () {
+    if (!confirm('Clear everything and start fresh?')) return;
+    qs('#stage-name').value   = '';
+    qs('#stage-desc').value   = '';
+    qs('#file-prefix').value  = '01';
+    qs('#steps-container').innerHTML = '';
+    addStep();
+  });
+
+  // ---- Init ----
+
+  (function init() {
+    addStep();
+    updatePreview();
+  })();
+
+})();
+</script>
+
+</body>
+</html>

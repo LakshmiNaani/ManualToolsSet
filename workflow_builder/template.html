@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Workflow</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f0f2f5;
+      color: #2d3748;
+      line-height: 1.6;
+    }
+
+    #app {
+      display: grid;
+      grid-template-columns: 240px 1fr 270px;
+      min-height: 100vh;
+    }
+
+    /* ---- Sidebar ---- */
+    #sidebar {
+      background: #1a202c;
+      color: #e2e8f0;
+      padding: 1.5rem 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    #sidebar-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #718096;
+      padding: 0 1.2rem 1rem;
+    }
+
+    .nav-stage {
+      padding: 0.55rem 1.2rem;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.875rem;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .nav-stage:hover { background: rgba(255,255,255,0.05); }
+    .nav-stage.active { border-left-color: #63b3ed; background: rgba(99,179,237,0.1); color: #bee3f8; }
+    .nav-stage.done .nav-check { color: #68d391; }
+    .nav-stage .nav-check { font-size: 0.85rem; flex-shrink: 0; width: 14px; text-align: center; }
+    .nav-stage .nav-label { flex: 1; }
+
+    /* ---- Main content ---- */
+    #content {
+      padding: 2.5rem 2rem;
+      max-width: 900px;
+    }
+
+    .stage-section {
+      background: #fff;
+      border-radius: 10px;
+      padding: 2rem;
+      margin-bottom: 2.5rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      scroll-margin-top: 2rem;
+    }
+
+    .stage-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #1a202c;
+      border-bottom: 2px solid #edf2f7;
+      padding-bottom: 0.6rem;
+      margin-bottom: 1rem;
+    }
+
+    .stage-desc { color: #4a5568; margin-bottom: 1.2rem; }
+    .stage-desc p { margin-bottom: 0.5rem; }
+
+    .step { margin-top: 1.6rem; }
+
+    .step-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #2b6cb0;
+      margin-bottom: 0.5rem;
+    }
+
+    .step p { color: #4a5568; margin-bottom: 0.4rem; font-size: 0.92rem; }
+    .step p code { background: #edf2f7; padding: 1px 4px; border-radius: 3px; font-size: 0.85em; }
+
+    .code-block-wrap {
+      position: relative;
+      margin: 0.8rem 0;
+    }
+
+    pre {
+      background: #1a202c;
+      color: #e2e8f0;
+      padding: 1rem 1rem 1rem 1rem;
+      border-radius: 7px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.55;
+    }
+
+    pre code {
+      font-family: "Cascadia Code", "Fira Code", Consolas, "Courier New", monospace;
+      white-space: pre;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      background: #4a5568;
+      color: #e2e8f0;
+      border: none;
+      border-radius: 4px;
+      padding: 0.2rem 0.65rem;
+      font-size: 0.72rem;
+      cursor: pointer;
+      transition: background 0.15s;
+      z-index: 1;
+    }
+
+    .copy-btn:hover { background: #63b3ed; color: #1a202c; }
+    .copy-btn.copied { background: #68d391; color: #1a202c; }
+
+    .mermaid-wrap {
+      background: #f7fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 7px;
+      padding: 1.2rem;
+      margin: 0.8rem 0;
+      overflow-x: auto;
+      text-align: center;
+    }
+
+    .param-highlight {
+      background: #fffbeb;
+      border-radius: 3px;
+      padding: 0 2px;
+      color: #c05621;
+      font-weight: 600;
+    }
+
+    .mark-done-btn {
+      margin-top: 1.8rem;
+      background: #48bb78;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 0.5rem 1.4rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 600;
+      transition: background 0.15s;
+    }
+
+    .mark-done-btn:hover { background: #38a169; }
+    .mark-done-btn.done { background: #e2e8f0; color: #718096; }
+    .mark-done-btn.done:hover { background: #cbd5e0; }
+
+    .stage-section.done-section { border-left: 4px solid #68d391; }
+
+    /* ---- Param panel ---- */
+    #param-panel {
+      background: #fff;
+      border-left: 1px solid #e2e8f0;
+      padding: 1.5rem 1rem;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    #param-panel h2 {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #718096;
+      margin-bottom: 1rem;
+    }
+
+    .param-empty-msg {
+      font-size: 0.82rem;
+      color: #a0aec0;
+      font-style: italic;
+    }
+
+    .param-field { margin-bottom: 1rem; }
+
+    .param-field label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #4a5568;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.3rem;
+    }
+
+    .param-field input {
+      width: 100%;
+      padding: 0.4rem 0.5rem;
+      border: 1px solid #cbd5e0;
+      border-radius: 5px;
+      font-family: "Cascadia Code", Consolas, monospace;
+      font-size: 0.8rem;
+      color: #2d3748;
+      transition: border-color 0.15s;
+    }
+
+    .param-field input:focus {
+      outline: none;
+      border-color: #63b3ed;
+      box-shadow: 0 0 0 3px rgba(99,179,237,0.2);
+    }
+
+    .param-field input.has-value { border-color: #68d391; }
+
+    #param-reset {
+      margin-top: 0.5rem;
+      font-size: 0.75rem;
+      color: #718096;
+      background: none;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
+      padding: 0.3rem 0.7rem;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    #param-reset:hover { background: #f7fafc; }
+
+    /* progress summary */
+    #progress-bar-wrap {
+      margin-top: 2rem;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 1rem;
+    }
+
+    #progress-bar-wrap h3 {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #718096;
+      margin-bottom: 0.5rem;
+    }
+
+    #progress-bar-bg {
+      background: #edf2f7;
+      border-radius: 999px;
+      height: 8px;
+      overflow: hidden;
+    }
+
+    #progress-bar-fill {
+      background: #48bb78;
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.4s ease;
+      width: 0%;
+    }
+
+    #progress-label {
+      font-size: 0.78rem;
+      color: #718096;
+      margin-top: 0.35rem;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <aside id="sidebar">
+    <div id="sidebar-title">Stages</div>
+    <!-- populated by JS -->
+  </aside>
+
+  <main id="content">
+    STAGES_HTML_PLACEHOLDER
+  </main>
+
+  <div id="param-panel">
+    <h2>Parameters</h2>
+    <div id="param-fields">
+      <!-- populated by JS -->
+    </div>
+    <button id="param-reset">Reset to defaults</button>
+    <div id="progress-bar-wrap">
+      <h3>Progress</h3>
+      <div id="progress-bar-bg"><div id="progress-bar-fill"></div></div>
+      <div id="progress-label">0 of 0 stages done</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+window.WORKFLOW_DATA = WORKFLOW_JSON_PLACEHOLDER;
+</script>
+<script>
+(function () {
+  'use strict';
+
+  var data = window.WORKFLOW_DATA;
+  var PROGRESS_KEY = 'wf_progress_' + window.location.pathname;
+  var PARAMS_KEY   = 'wf_params_'   + window.location.pathname;
+
+  // ---- localStorage helpers ----
+
+  function loadProgress() {
+    try { return JSON.parse(localStorage.getItem(PROGRESS_KEY) || '{}'); }
+    catch (e) { return {}; }
+  }
+
+  function saveProgress(stageId, done) {
+    var p = loadProgress();
+    p[stageId] = done;
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(p));
+    updateProgressBar();
+  }
+
+  function loadParamValues() {
+    try { return JSON.parse(localStorage.getItem(PARAMS_KEY) || '{}'); }
+    catch (e) { return {}; }
+  }
+
+  function saveParamValues(params) {
+    localStorage.setItem(PARAMS_KEY, JSON.stringify(params));
+  }
+
+  // ---- Current param values ----
+
+  function getCurrentParams() {
+    var vals = {};
+    var saved = loadParamValues();
+    Object.keys(data.params).forEach(function (k) {
+      vals[k] = (k in saved) ? saved[k] : data.params[k];
+    });
+    return vals;
+  }
+
+  // ---- Live substitution ----
+
+  function escapeHtml(str) {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function updateAllCommands(params) {
+    document.querySelectorAll('[data-raw-command]').forEach(function (el) {
+      var text = el.getAttribute('data-raw-command');
+      Object.keys(params).forEach(function (k) {
+        var val = params[k] !== '' ? escapeHtml(params[k]) : null;
+        var re = new RegExp('\\{\\{' + k + '(?:=[^}]*)?\\}\\}', 'g');
+        if (val !== null) {
+          text = text.replace(re, val);
+        }
+      });
+      // highlight any remaining unfilled placeholders
+      text = text.replace(/\{\{(\w+)(?:=[^}]*)?\}\}/g,
+        '<span class="param-highlight">{{$1}}</span>');
+      el.innerHTML = text;
+    });
+  }
+
+  // ---- Param panel ----
+
+  function buildParamPanel() {
+    var container = document.getElementById('param-fields');
+    var savedVals = loadParamValues();
+    var paramNames = Object.keys(data.params);
+
+    if (paramNames.length === 0) {
+      container.innerHTML = '<p class="param-empty-msg">No parameters found.</p>';
+      document.getElementById('param-reset').style.display = 'none';
+      return;
+    }
+
+    paramNames.forEach(function (name) {
+      var defaultVal = data.params[name];
+      var currentVal = (name in savedVals) ? savedVals[name] : defaultVal;
+
+      var div = document.createElement('div');
+      div.className = 'param-field';
+
+      var label = document.createElement('label');
+      label.textContent = name;
+      label.setAttribute('for', 'param-' + name);
+
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.id = 'param-' + name;
+      input.dataset.param = name;
+      input.dataset.default = defaultVal;
+      input.placeholder = defaultVal || '(required)';
+      input.value = currentVal;
+      if (currentVal) input.classList.add('has-value');
+
+      input.addEventListener('input', function () {
+        if (this.value) {
+          this.classList.add('has-value');
+        } else {
+          this.classList.remove('has-value');
+        }
+        var params = collectParamValues();
+        saveParamValues(params);
+        updateAllCommands(params);
+      });
+
+      div.appendChild(label);
+      div.appendChild(input);
+      container.appendChild(div);
+    });
+  }
+
+  function collectParamValues() {
+    var vals = {};
+    document.querySelectorAll('[data-param]').forEach(function (el) {
+      vals[el.dataset.param] = el.value;
+    });
+    return vals;
+  }
+
+  // ---- Sidebar ----
+
+  function buildSidebar() {
+    var aside = document.getElementById('sidebar');
+    var progress = loadProgress();
+
+    data.stages.forEach(function (stage) {
+      var div = document.createElement('div');
+      div.className = 'nav-stage';
+      div.dataset.stageId = stage.id;
+      if (progress[stage.id]) div.classList.add('done');
+
+      div.innerHTML =
+        '<span class="nav-check">' + (progress[stage.id] ? '✓' : '○') + '</span>' +
+        '<span class="nav-label">' + stage.title + '</span>';
+
+      div.addEventListener('click', function () {
+        var target = document.getElementById(stage.id);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setActiveSidebar(stage.id);
+      });
+
+      aside.appendChild(div);
+    });
+  }
+
+  function setActiveSidebar(stageId) {
+    document.querySelectorAll('.nav-stage').forEach(function (el) {
+      el.classList.toggle('active', el.dataset.stageId === stageId);
+    });
+  }
+
+  // ---- Intersection Observer for active sidebar highlight ----
+
+  function initScrollSpy() {
+    if (!window.IntersectionObserver) return;
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          setActiveSidebar(entry.target.id);
+        }
+      });
+    }, { rootMargin: '-20% 0px -70% 0px', threshold: 0 });
+
+    document.querySelectorAll('.stage-section').forEach(function (el) {
+      observer.observe(el);
+    });
+  }
+
+  // ---- Copy buttons ----
+
+  window.copyCode = function (btn) {
+    var code = btn.parentElement.querySelector('code');
+    var text = code.innerText;
+    navigator.clipboard.writeText(text).then(function () {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(function () {
+        btn.textContent = 'Copy';
+        btn.classList.remove('copied');
+      }, 1800);
+    }).catch(function () {
+      // fallback for non-https / older browsers
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(function () {
+        btn.textContent = 'Copy';
+        btn.classList.remove('copied');
+      }, 1800);
+    });
+  };
+
+  // ---- Mark done ----
+
+  window.toggleDone = function (btn) {
+    var stageId = btn.dataset.stage;
+    var section = document.getElementById(stageId);
+    var isDone = btn.classList.contains('done');
+    var nowDone = !isDone;
+
+    btn.classList.toggle('done', nowDone);
+    btn.textContent = nowDone ? '✓ Completed' : 'Mark Complete';
+    section.classList.toggle('done-section', nowDone);
+
+    // update sidebar
+    var navItem = document.querySelector('.nav-stage[data-stage-id="' + stageId + '"]');
+    if (navItem) {
+      navItem.classList.toggle('done', nowDone);
+      navItem.querySelector('.nav-check').textContent = nowDone ? '✓' : '○';
+    }
+
+    saveProgress(stageId, nowDone);
+  };
+
+  // ---- Progress bar ----
+
+  function updateProgressBar() {
+    var progress = loadProgress();
+    var total = data.stages.length;
+    var done = data.stages.filter(function (s) { return progress[s.id]; }).length;
+    var pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    document.getElementById('progress-bar-fill').style.width = pct + '%';
+    document.getElementById('progress-label').textContent =
+      done + ' of ' + total + ' stage' + (total !== 1 ? 's' : '') + ' done';
+  }
+
+  // ---- Restore saved progress to DOM ----
+
+  function restoreProgress() {
+    var progress = loadProgress();
+    data.stages.forEach(function (stage) {
+      if (!progress[stage.id]) return;
+      var section = document.getElementById(stage.id);
+      var btn = section && section.querySelector('.mark-done-btn');
+      if (btn) {
+        btn.classList.add('done');
+        btn.textContent = '✓ Completed';
+        section.classList.add('done-section');
+      }
+    });
+  }
+
+  // ---- Reset params ----
+
+  document.getElementById('param-reset').addEventListener('click', function () {
+    document.querySelectorAll('[data-param]').forEach(function (el) {
+      el.value = el.dataset.default;
+      el.classList.toggle('has-value', !!el.value);
+    });
+    var params = collectParamValues();
+    saveParamValues(params);
+    updateAllCommands(params);
+  });
+
+  // ---- Init ----
+
+  document.addEventListener('DOMContentLoaded', function () {
+    buildParamPanel();
+    buildSidebar();
+    restoreProgress();
+    updateProgressBar();
+
+    var params = getCurrentParams();
+    updateAllCommands(params);
+
+    mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'loose' });
+    mermaid.run({ querySelector: '.mermaid' });
+
+    initScrollSpy();
+  });
+
+})();
+</script>
+</body>
+</html>
