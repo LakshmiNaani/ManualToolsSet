@@ -1,0 +1,151 @@
+# LLM Standards Document
+Generated: 2026-05-24 18:54
+Sources: 3 file(s)
+
+---
+## guidelines
+
+# Team Guidelines for AI-Assisted Development
+
+Practical guidelines for using AI tools effectively in day-to-day engineering work.
+
+## Do's
+
+- **Review every output** before committing — AI is a co-pilot, not autopilot
+- **Provide full context** — paste error messages, stack traces, relevant code
+- **Iterate** — if the first response misses the mark, refine your prompt
+- **Save good prompts** — reuse prompts that worked well as team templates
+
+## Don'ts
+
+- Don't trust AI for security-critical decisions without a human review
+- Don't paste credentials, PII, or confidential data into public AI tools
+- Don't use AI output as a substitute for understanding the code
+
+## When to Use AI
+
+| Task | Recommended? |
+|------|-------------|
+| Boilerplate generation | Yes |
+| Test case drafting | Yes |
+| Architecture decisions | Assist only |
+| Code review | Assist only |
+| Security audits | No (human required) |
+| Production incidents | No (human required) |
+
+## Escalation Path
+
+If the AI gives a response that seems incorrect or dangerous:
+
+1. Stop and do not use the output
+2. Document the prompt and response
+3. Raise in the team Slack channel `#ai-review`
+4. A senior engineer will review and update the relevant prompt template
+
+## Onboarding New Team Members
+
+New joiners should complete the internal **Context Engineering 101** module before using AI tools in production workflows. This covers:
+
+- Understanding model limitations
+- Prompt basics
+- Our team standards (see `standards.md`)
+- Escalation procedures
+
+---
+## intro
+
+# Introduction to Context Engineering
+
+Context engineering is the practice of deliberately crafting the information provided to an LLM to maximise the quality and relevance of its output.
+
+## Why It Matters
+
+Large language models are powerful but sensitive to context. The same question answered differently depending on:
+
+- The **role** you assign to the model
+- The **examples** you provide
+- The **constraints** you specify
+- The **format** you request
+
+## Manual Inputs vs Templates
+
+| Approach | Strength | Weakness |
+|----------|----------|----------|
+| Pure manual | Flexible, nuanced | Not repeatable |
+| Pure template | Consistent, fast | Brittle for edge cases |
+| **Hybrid** | **Best of both** | Requires upfront design |
+
+The hybrid approach combines human judgement (manual inputs) with structured templates to produce outputs that are both consistent and contextually appropriate.
+
+## Getting Started
+
+1. Identify the **goal** of your prompt
+2. Choose which parts benefit from templates
+3. Design the manual input fields that guide the template
+4. Iterate based on output quality
+
+---
+## standards
+
+# Prompt Engineering Standards
+
+These standards define how our team writes prompts for LLM-assisted workflows.
+
+## Standard 1 — Role Declaration
+
+Every system prompt **must** begin with a role declaration:
+
+```
+You are a [role] with expertise in [domain].
+Your goal is to [primary objective].
+```
+
+> A clear role reduces hallucination and anchors the model's behaviour.
+
+## Standard 2 — Output Format Specification
+
+Always specify the expected output format explicitly:
+
+- Use `JSON` for machine-readable outputs
+- Use `Markdown` for human-readable reports
+- Use `CSV` for tabular data exports
+
+```
+Respond only in valid JSON matching this schema:
+{ "summary": string, "items": string[], "confidence": number }
+```
+
+## Standard 3 — Few-Shot Examples
+
+Include at least **2 examples** for non-trivial tasks:
+
+```
+Input: "Fix the login bug"
+Output: { "type": "bug", "priority": "high", "component": "auth" }
+
+Input: "Add dark mode toggle"
+Output: { "type": "feature", "priority": "medium", "component": "ui" }
+```
+
+## Standard 4 — Constraint Blocks
+
+Use a dedicated constraints section to set hard limits:
+
+```
+Constraints:
+- Do not generate code longer than 50 lines
+- Never suggest breaking changes to the public API
+- Respond in under 200 words
+```
+
+## Review Checklist
+
+- [ ] Role declared?
+- [ ] Output format specified?
+- [ ] At least 2 examples provided?
+- [ ] Constraints listed?
+- [ ] Tested against 3+ edge cases?
+
+---
+Total files: 3
+Total words: 649
