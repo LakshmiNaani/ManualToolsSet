@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PromptBuilder</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --color-bg: #f9fafb;
+      --color-surface: #ffffff;
+      --color-border: #e5e7eb;
+      --color-accent: #3b82f6;
+      --color-accent-hover: #2563eb;
+      --color-text: #111827;
+      --color-text-muted: #6b7280;
+      --color-danger: #ef4444;
+      --color-success: #10b981;
+      --radius: 8px;
+      --gap: 16px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--color-bg);
+      color: var(--color-text);
+      line-height: 1.5;
+    }
+
+    header {
+      background-color: var(--color-surface);
+      border-bottom: 1px solid var(--color-border);
+      padding: var(--gap);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
+    header h1 {
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    main.layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--gap);
+      padding: var(--gap);
+      height: calc(100vh - 80px);
+    }
+
+    #left-panel, #right-panel {
+      display: flex;
+      flex-direction: column;
+      background-color: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: var(--gap);
+      overflow: hidden;
+    }
+
+    #tab-bar {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid var(--color-border);
+      margin-bottom: var(--gap);
+    }
+
+    .tab-button {
+      padding: 8px 16px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-weight: 500;
+      color: var(--color-text-muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .tab-button[data-active="true"] {
+      color: var(--color-accent);
+      border-bottom-color: var(--color-accent);
+    }
+
+    .tab-button:hover {
+      color: var(--color-text);
+    }
+
+    .tab-content {
+      display: none;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .tab-content[data-active="true"] {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-group {
+      margin-bottom: var(--gap);
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 4px;
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    .form-group input[type="text"],
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--color-border);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 14px;
+      resize: none;
+    }
+
+    .form-group textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .form-group input[type="text"]:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--color-accent);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .checkbox-item {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      margin-bottom: var(--gap);
+      padding: 12px;
+      border: 1px solid var(--color-border);
+      border-radius: 4px;
+      background-color: var(--color-bg);
+    }
+
+    .checkbox-item input[type="checkbox"] {
+      margin-top: 4px;
+      cursor: pointer;
+    }
+
+    .checkbox-item label {
+      flex: 1;
+      cursor: pointer;
+    }
+
+    .checkbox-item .checkbox-content {
+      flex: 1;
+    }
+
+    .checkbox-item .checkbox-content .label-text {
+      font-weight: 500;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .checkbox-item .checkbox-content .status {
+      font-size: 12px;
+      color: var(--color-text-muted);
+    }
+
+    .sub-list {
+      margin-left: 24px;
+      margin-top: 8px;
+      padding-left: 8px;
+      border-left: 2px solid var(--color-border);
+    }
+
+    .sub-list-item {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 6px 0;
+      font-size: 13px;
+    }
+
+    .sub-list-item input[type="checkbox"] {
+      cursor: pointer;
+    }
+
+    .button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      font-weight: 500;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .button-primary {
+      background-color: var(--color-accent);
+      color: white;
+    }
+
+    .button-primary:hover {
+      background-color: var(--color-accent-hover);
+    }
+
+    .button-secondary {
+      background-color: var(--color-border);
+      color: var(--color-text);
+    }
+
+    .button-secondary:hover {
+      background-color: #d1d5db;
+    }
+
+    .button-danger {
+      background-color: var(--color-danger);
+      color: white;
+      font-size: 13px;
+      padding: 6px 12px;
+    }
+
+    .button-danger:hover {
+      background-color: #dc2626;
+    }
+
+    .button-small {
+      font-size: 13px;
+      padding: 6px 12px;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .card {
+      border: 1px solid var(--color-border);
+      border-radius: 4px;
+      padding: 12px;
+      background-color: var(--color-bg);
+      margin-bottom: 12px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .card-title {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 4px;
+    }
+
+    #prompt-preview {
+      flex: 1;
+      padding: 12px;
+      border: 1px solid var(--color-border);
+      border-radius: 4px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      background-color: var(--color-bg);
+      resize: none;
+      margin-bottom: var(--gap);
+    }
+
+    #export-bar {
+      display: flex;
+      gap: 8px;
+    }
+
+    .export-button {
+      flex: 1;
+      padding: 10px 16px;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: var(--color-success);
+      color: white;
+      padding: 12px 20px;
+      border-radius: var(--radius);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateY(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .hidden-btn {
+      display: inline-block;
+      width: 0;
+      height: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .info-text {
+      font-size: 12px;
+      color: var(--color-text-muted);
+      margin-top: 4px;
+    }
+
+    .list-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
+      background-color: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: 4px;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .list-item-content {
+      flex: 1;
+    }
+
+    .list-item-name {
+      font-weight: 500;
+    }
+
+    .list-item-preview {
+      font-size: 12px;
+      color: var(--color-text-muted);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .list-item-actions {
+      display: flex;
+      gap: 4px;
+    }
+
+    @media (max-width: 1024px) {
+      main.layout {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+
+      #left-panel, #right-panel {
+        min-height: 400px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>PromptBuilder</h1>
+  </header>
+
+  <main class="layout">
+    <section id="left-panel">
+      <div id="tab-bar">
+        <button class="tab-button" data-tab="context" data-active="true">Context</button>
+        <button class="tab-button" data-tab="roles">Roles</button>
+        <button class="tab-button" data-tab="plans">Plans</button>
+      </div>
+
+      <div id="tab-context" class="tab-content" data-active="true">
+        <!-- Context tab content will be rendered here -->
+      </div>
+
+      <div id="tab-roles" class="tab-content">
+        <!-- Roles tab content will be rendered here -->
+      </div>
+
+      <div id="tab-plans" class="tab-content">
+        <!-- Plans tab content will be rendered here -->
+      </div>
+    </section>
+
+    <section id="right-panel">
+      <textarea id="prompt-preview" readonly placeholder="Assembled prompt will appear here..."></textarea>
+      <div id="export-bar">
+        <button class="button button-primary export-button" id="copy-btn">Copy to Clipboard</button>
+        <button class="button button-secondary export-button" id="export-txt-btn">Export .txt</button>
+        <button class="button button-secondary export-button" id="export-md-btn">Export .md</button>
+      </div>
+    </section>
+  </main>
+
+  <input type="file" id="llm-file-input" accept=".txt">
+  <input type="file" id="roles-import-input" accept=".json">
+
+  <script>
+    // ============================================================================
+    // Store Module — localStorage accessor
+    // ============================================================================
+    const Store = {
+      get(key) {
+        try {
+          const value = localStorage.getItem(key);
+          return value ? JSON.parse(value) : null;
+        } catch {
+          return null;
+        }
+      },
+
+      set(key, value) {
+        localStorage.setItem(key, JSON.stringify(value));
+      },
+
+      getRoles() {
+        return this.get('pb_roles') || [];
+      },
+
+      saveRoles(roles) {
+        this.set('pb_roles', roles);
+      },
+
+      getActiveRoleId() {
+        return this.get('pb_active_role_id') || null;
+      },
+
+      setActiveRoleId(id) {
+        this.set('pb_active_role_id', id);
+      },
+
+      getPlans() {
+        return this.get('pb_plans') || [];
+      },
+
+      savePlans(plans) {
+        this.set('pb_plans', plans);
+      },
+
+      getLlmContent() {
+        return this.get('pb_llm_txt_content') || '';
+      },
+
+      getLlmFilename() {
+        return this.get('pb_llm_txt_filename') || '';
+      },
+
+      setLlmContent(text, filename) {
+        this.set('pb_llm_txt_content', text);
+        this.set('pb_llm_txt_filename', filename);
+      },
+
+      clearLlmContent() {
+        localStorage.removeItem('pb_llm_txt_content');
+        localStorage.removeItem('pb_llm_txt_filename');
+      },
+
+      getVenvPath() {
+        return this.get('pb_venv_path') || '';
+      },
+
+      setVenvPath(path) {
+        this.set('pb_venv_path', path);
+      },
+
+      getSelectedPlanIds() {
+        return this.get('pb_selected_plan_ids') || [];
+      },
+
+      setSelectedPlanIds(ids) {
+        this.set('pb_selected_plan_ids', ids);
+      },
+
+      getContextFlags() {
+        return this.get('pb_context_flags') || {
+          llm: false,
+          venv: false,
+          plans: false,
+          role: false
+        };
+      },
+
+      setContextFlags(flags) {
+        this.set('pb_context_flags', flags);
+      }
+    };
+
+    // ============================================================================
+    // Assembler Module — builds prompt string from state
+    // ============================================================================
+    const Assembler = {
+      build(state) {
+        const sections = [];
+
+        // Role section
+        if (state.flags.role && state.activeRole && state.activeRole.content.trim()) {
+          sections.push(`## Role\n\n${state.activeRole.content.trim()}`);
+        }
+
+        // Environment section
+        if (state.flags.venv && state.venvPath.trim()) {
+          sections.push(`## Environment\n\n**venv path:** ${state.venvPath.trim()}`);
+        }
+
+        // LLM Context section
+        if (state.flags.llm && state.llmContent.trim()) {
+          sections.push(`## LLM Context\n\n${state.llmContent.trim()}`);
+        }
+
+        // Plans section
+        if (state.flags.plans && state.selectedPlans.length > 0) {
+          let plansText = '## Plans\n\n';
+          state.selectedPlans.forEach((plan, index) => {
+            plansText += `### ${plan.title}\n\n${plan.body.trim()}`;
+            if (index < state.selectedPlans.length - 1) {
+              plansText += '\n\n---\n\n';
+            }
+          });
+          sections.push(plansText);
+        }
+
+        if (sections.length === 0) {
+          return '(No context elements selected.)';
+        }
+
+        return sections.join('\n\n---\n\n');
+      }
+    };
+
+    // ============================================================================
+    // FileHandler Module — browser File API operations
+    // ============================================================================
+    const FileHandler = {
+      readTextFile(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = () => reject(new Error('Failed to read file'));
+          reader.readAsText(file);
+        });
+      },
+
+      triggerDownload(text, filename) {
+        const blob = new Blob([text], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    };
+
+    // ============================================================================
+    // RoleManager Module — CRUD for roles, import/export
+    // ============================================================================
+    const RoleManager = {
+      getAll() {
+        return Store.getRoles();
+      },
+
+      create(name, content) {
+        const roles = this.getAll();
+        const role = {
+          id: crypto.randomUUID(),
+          name,
+          content
+        };
+        roles.push(role);
+        Store.saveRoles(roles);
+        return role;
+      },
+
+      update(id, name, content) {
+        const roles = this.getAll();
+        const role = roles.find(r => r.id === id);
+        if (role) {
+          role.name = name;
+          role.content = content;
+          Store.saveRoles(roles);
+        }
+      },
+
+      delete(id) {
+        const roles = this.getAll().filter(r => r.id !== id);
+        Store.saveRoles(roles);
+        // If this was the active role, clear it
+        if (Store.getActiveRoleId() === id) {
+          Store.setActiveRoleId(null);
+        }
+      },
+
+      getActive() {
+        const id = Store.getActiveRoleId();
+        if (!id) return null;
+        return this.getAll().find(r => r.id === id) || null;
+      },
+
+      setActive(id) {
+        Store.setActiveRoleId(id);
+      },
+
+      exportAsJSON() {
+        const roles = this.getAll();
+        FileHandler.triggerDownload(JSON.stringify(roles, null, 2), 'roles.json');
+      },
+
+      importFromJSON(file) {
+        return FileHandler.readTextFile(file).then(text => {
+          const imported = JSON.parse(text);
+          if (!Array.isArray(imported)) {
+            throw new Error('Invalid roles file format');
+          }
+          // Validate structure
+          imported.forEach(role => {
+            if (!role.id || !role.name || !role.content) {
+              throw new Error('Invalid role object structure');
+            }
+          });
+          Store.saveRoles(imported);
+          return imported;
+        });
+      }
+    };
+
+    // ============================================================================
+    // PlanManager Module — CRUD for plans
+    // ============================================================================
+    const PlanManager = {
+      getAll() {
+        return Store.getPlans();
+      },
+
+      create(title, body) {
+        const plans = this.getAll();
+        const plan = {
+          id: crypto.randomUUID(),
+          title,
+          body,
+          createdAt: new Date().toISOString()
+        };
+        plans.push(plan);
+        Store.savePlans(plans);
+        return plan;
+      },
+
+      delete(id) {
+        const plans = this.getAll().filter(p => p.id !== id);
+        Store.savePlans(plans);
+        // Remove from selected if it was selected
+        const selected = Store.getSelectedPlanIds().filter(pid => pid !== id);
+        Store.setSelectedPlanIds(selected);
+      },
+
+      getSelectedIds() {
+        return Store.getSelectedPlanIds();
+      },
+
+      toggleSelected(id) {
+        const selected = this.getSelectedIds();
+        const index = selected.indexOf(id);
+        if (index > -1) {
+          selected.splice(index, 1);
+        } else {
+          selected.push(id);
+        }
+        Store.setSelectedPlanIds(selected);
+      },
+
+      getSelected() {
+        const selected = this.getSelectedIds();
+        return this.getAll().filter(p => selected.includes(p.id));
+      }
+    };
+
+    // ============================================================================
+    // UI Module — rendering and event wiring
+    // ============================================================================
+    const UI = {
+      init() {
+        this.bindTabEvents();
+        this.bindContextEvents();
+        this.bindRoleEvents();
+        this.bindPlanEvents();
+        this.bindExportEvents();
+        this.renderContextTab();
+        this.renderRolesTab();
+        this.renderPlansTab();
+        this.renderPreview();
+      },
+
+      bindTabEvents() {
+        document.querySelectorAll('#tab-bar .tab-button').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const tabName = e.target.dataset.tab;
+            this.switchTab(tabName);
+          });
+        });
+      },
+
+      switchTab(tabName) {
+        // Deactivate all tabs
+        document.querySelectorAll('#tab-bar .tab-button').forEach(btn => {
+          btn.dataset.active = 'false';
+        });
+        document.querySelectorAll('.tab-content').forEach(content => {
+          content.dataset.active = 'false';
+        });
+
+        // Activate selected tab
+        document.querySelector(`#tab-bar .tab-button[data-tab="${tabName}"]`).dataset.active = 'true';
+        document.querySelector(`#tab-${tabName}`).dataset.active = 'true';
+      },
+
+      renderContextTab() {
+        const container = document.getElementById('tab-context');
+        const flags = Store.getContextFlags();
+        const llmFilename = Store.getLlmFilename();
+        const venvPath = Store.getVenvPath();
+        const plans = PlanManager.getAll();
+        const selectedPlanIds = PlanManager.getSelectedIds();
+        const activeRole = RoleManager.getActive();
+        const roles = RoleManager.getAll();
+
+        container.innerHTML = `
+          <!-- llm.txt checkbox item -->
+          <div class="checkbox-item">
+            <input type="checkbox" id="flag-llm" ${flags.llm ? 'checked' : ''}>
+            <div class="checkbox-content">
+              <span class="label-text">llm.txt</span>
+              <span class="status">${llmFilename ? `✓ ${llmFilename}` : 'No file selected'}</span>
+              <div class="button-group" style="margin-top: 8px;">
+                <button class="button button-secondary button-small" id="choose-llm-btn">Choose File</button>
+                ${llmFilename ? '<button class="button button-danger button-small" id="clear-llm-btn">Clear</button>' : ''}
+              </div>
+            </div>
+          </div>
+
+          <!-- venv path checkbox item -->
+          <div class="checkbox-item">
+            <input type="checkbox" id="flag-venv" ${flags.venv ? 'checked' : ''}>
+            <div class="checkbox-content">
+              <span class="label-text">venv path</span>
+              <input type="text" id="venv-path-input" placeholder="e.g., /Users/me/.venv" value="${venvPath}" style="margin-top: 8px;">
+            </div>
+          </div>
+
+          <!-- Existing Plans checkbox item -->
+          <div class="checkbox-item">
+            <input type="checkbox" id="flag-plans" ${flags.plans ? 'checked' : ''}>
+            <div class="checkbox-content">
+              <span class="label-text">Existing Plans</span>
+              ${plans.length > 0 ? `
+                <div class="sub-list">
+                  ${plans.map(plan => `
+                    <div class="sub-list-item">
+                      <input type="checkbox" class="plan-checkbox" data-plan-id="${plan.id}" ${selectedPlanIds.includes(plan.id) ? 'checked' : ''}>
+                      <label>${plan.title}</label>
+                    </div>
+                  `).join('')}
+                </div>
+              ` : '<div class="info-text">No plans created yet. Create plans in the Plans tab.</div>'}
+            </div>
+          </div>
+
+          <!-- User Role checkbox item -->
+          <div class="checkbox-item">
+            <input type="checkbox" id="flag-role" ${flags.role ? 'checked' : ''}>
+            <div class="checkbox-content">
+              <span class="label-text">User Role</span>
+              ${roles.length > 0 ? `
+                <select id="role-select" style="margin-top: 8px;">
+                  <option value="">-- Select a role --</option>
+                  ${roles.map(role => `
+                    <option value="${role.id}" ${role.id === Store.getActiveRoleId() ? 'selected' : ''}>${role.name}</option>
+                  `).join('')}
+                </select>
+              ` : '<div class="info-text">No roles created yet. Create roles in the Roles tab.</div>'}
+            </div>
+          </div>
+        `;
+      },
+
+      renderRolesTab() {
+        const container = document.getElementById('tab-roles');
+        const roles = RoleManager.getAll();
+
+        container.innerHTML = `
+          <div class="form-group">
+            <label for="role-name-input">Role Name</label>
+            <input type="text" id="role-name-input" placeholder="e.g., Backend Engineer">
+          </div>
+
+          <div class="form-group">
+            <label for="role-content-input">Role Description</label>
+            <textarea id="role-content-input" placeholder="Describe your role, expertise, and context..."></textarea>
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-bottom: var(--gap);">
+            <button class="button button-primary" id="save-role-btn">Save Role</button>
+            <button class="button button-secondary" id="export-roles-btn">Export as JSON</button>
+            <button class="button button-secondary" id="import-roles-btn">Import JSON</button>
+          </div>
+
+          ${roles.length > 0 ? `
+            <div style="flex: 1; overflow-y: auto;">
+              ${roles.map(role => `
+                <div class="list-item">
+                  <div class="list-item-content">
+                    <div class="list-item-name">${role.name}</div>
+                    <div class="list-item-preview">${role.content.substring(0, 60)}...</div>
+                  </div>
+                  <div class="list-item-actions">
+                    <button class="button button-secondary button-small edit-role-btn" data-role-id="${role.id}">Edit</button>
+                    <button class="button button-danger button-small delete-role-btn" data-role-id="${role.id}">Delete</button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          ` : '<div class="info-text">No roles saved yet. Create your first role above.</div>'}
+        `;
+      },
+
+      renderPlansTab() {
+        const container = document.getElementById('tab-plans');
+        const plans = PlanManager.getAll();
+
+        container.innerHTML = `
+          <div class="form-group">
+            <label for="plan-title-input">Plan Title</label>
+            <input type="text" id="plan-title-input" placeholder="e.g., Project Architecture">
+          </div>
+
+          <div class="form-group">
+            <label for="plan-body-input">Plan Description</label>
+            <textarea id="plan-body-input" placeholder="Describe your plan, approach, or context..."></textarea>
+          </div>
+
+          <button class="button button-primary" id="save-plan-btn" style="align-self: flex-start;">Save Plan</button>
+
+          ${plans.length > 0 ? `
+            <div style="flex: 1; overflow-y: auto; margin-top: var(--gap);">
+              ${plans.map(plan => `
+                <div class="list-item">
+                  <div class="list-item-content">
+                    <div class="list-item-name">${plan.title}</div>
+                    <div class="list-item-preview">${plan.body.substring(0, 60)}...</div>
+                  </div>
+                  <div class="list-item-actions">
+                    <button class="button button-danger button-small delete-plan-btn" data-plan-id="${plan.id}">Delete</button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          ` : '<div class="info-text" style="margin-top: var(--gap);">No plans saved yet. Create your first plan above.</div>'}
+        `;
+      },
+
+      renderPreview() {
+        const flags = Store.getContextFlags();
+        const state = {
+          flags,
+          activeRole: RoleManager.getActive(),
+          llmContent: Store.getLlmContent(),
+          venvPath: Store.getVenvPath(),
+          selectedPlans: PlanManager.getSelected()
+        };
+
+        const prompt = Assembler.build(state);
+        document.getElementById('prompt-preview').value = prompt;
+      },
+
+      bindContextEvents() {
+        document.addEventListener('change', (e) => {
+          if (e.target.id === 'flag-llm') {
+            const flags = Store.getContextFlags();
+            flags.llm = e.target.checked;
+            Store.setContextFlags(flags);
+            this.renderPreview();
+          }
+
+          if (e.target.id === 'flag-venv') {
+            const flags = Store.getContextFlags();
+            flags.venv = e.target.checked;
+            Store.setContextFlags(flags);
+            this.renderPreview();
+          }
+
+          if (e.target.id === 'flag-plans') {
+            const flags = Store.getContextFlags();
+            flags.plans = e.target.checked;
+            Store.setContextFlags(flags);
+            this.renderPreview();
+          }
+
+          if (e.target.id === 'flag-role') {
+            const flags = Store.getContextFlags();
+            flags.role = e.target.checked;
+            Store.setContextFlags(flags);
+            this.renderPreview();
+          }
+
+          if (e.target.id === 'role-select') {
+            const roleId = e.target.value || null;
+            RoleManager.setActive(roleId);
+            // Auto-enable role flag when a role is selected
+            if (roleId) {
+              const flags = Store.getContextFlags();
+              flags.role = true;
+              Store.setContextFlags(flags);
+              this.renderContextTab();
+            }
+            this.renderPreview();
+          }
+
+          if (e.target.classList.contains('plan-checkbox')) {
+            PlanManager.toggleSelected(e.target.dataset.planId);
+            this.renderPreview();
+          }
+
+          if (e.target.id === 'llm-file-input') {
+            const file = e.target.files[0];
+            if (file) {
+              FileHandler.readTextFile(file)
+                .then(content => {
+                  Store.setLlmContent(content, file.name);
+                  this.renderContextTab();
+                  this.renderPreview();
+                })
+                .catch(() => alert('Failed to read file'));
+            }
+            e.target.value = ''; // Reset input
+          }
+
+          if (e.target.id === 'roles-import-input') {
+            const file = e.target.files[0];
+            if (file) {
+              RoleManager.importFromJSON(file)
+                .then(() => {
+                  this.renderRolesTab();
+                  this.renderContextTab();
+                  this.showToast('Roles imported successfully!');
+                })
+                .catch(() => alert('Failed to import roles'));
+            }
+            e.target.value = ''; // Reset input
+          }
+        });
+
+        document.addEventListener('input', (e) => {
+          if (e.target.id === 'venv-path-input') {
+            Store.setVenvPath(e.target.value);
+            this.renderPreview();
+          }
+        });
+
+        document.addEventListener('click', (e) => {
+          if (e.target.id === 'choose-llm-btn') {
+            document.getElementById('llm-file-input').click();
+          }
+
+          if (e.target.id === 'clear-llm-btn') {
+            Store.clearLlmContent();
+            this.renderContextTab();
+            this.renderPreview();
+          }
+        });
+      },
+
+      bindRoleEvents() {
+        document.addEventListener('click', (e) => {
+          if (e.target.id === 'save-role-btn') {
+            const name = document.getElementById('role-name-input').value.trim();
+            const content = document.getElementById('role-content-input').value.trim();
+
+            if (!name || !content) {
+              alert('Please enter both name and description');
+              return;
+            }
+
+            RoleManager.create(name, content);
+            document.getElementById('role-name-input').value = '';
+            document.getElementById('role-content-input').value = '';
+            this.renderRolesTab();
+            this.renderContextTab();
+            this.renderPreview();
+            this.showToast('Role saved!');
+          }
+
+          if (e.target.classList.contains('edit-role-btn')) {
+            const roleId = e.target.dataset.roleId;
+            const roles = RoleManager.getAll();
+            const role = roles.find(r => r.id === roleId);
+            if (role) {
+              // Switch to Roles tab first so the inputs are rendered
+              this.switchTab('roles');
+              // Wait for render, then populate fields
+              setTimeout(() => {
+                document.getElementById('role-name-input').value = role.name;
+                document.getElementById('role-content-input').value = role.content;
+                RoleManager.delete(roleId);
+                this.renderContextTab();
+                this.renderPreview();
+                document.getElementById('role-name-input').focus();
+              }, 0);
+            }
+          }
+
+          if (e.target.classList.contains('delete-role-btn')) {
+            const roleId = e.target.dataset.roleId;
+            if (confirm('Delete this role?')) {
+              RoleManager.delete(roleId);
+              this.renderRolesTab();
+              this.renderContextTab();
+              this.renderPreview();
+            }
+          }
+
+          if (e.target.id === 'export-roles-btn') {
+            RoleManager.exportAsJSON();
+            this.showToast('Roles exported!');
+          }
+
+          if (e.target.id === 'import-roles-btn') {
+            document.getElementById('roles-import-input').click();
+          }
+        });
+      },
+
+      bindPlanEvents() {
+        document.addEventListener('click', (e) => {
+          if (e.target.id === 'save-plan-btn') {
+            const title = document.getElementById('plan-title-input').value.trim();
+            const body = document.getElementById('plan-body-input').value.trim();
+
+            if (!title || !body) {
+              alert('Please enter both title and description');
+              return;
+            }
+
+            PlanManager.create(title, body);
+            document.getElementById('plan-title-input').value = '';
+            document.getElementById('plan-body-input').value = '';
+            this.renderPlansTab();
+            this.renderContextTab();
+            this.renderPreview();
+            this.showToast('Plan saved!');
+          }
+
+          if (e.target.classList.contains('delete-plan-btn')) {
+            const planId = e.target.dataset.planId;
+            if (confirm('Delete this plan?')) {
+              PlanManager.delete(planId);
+              this.renderPlansTab();
+              this.renderContextTab();
+              this.renderPreview();
+            }
+          }
+        });
+      },
+
+      bindExportEvents() {
+        document.getElementById('copy-btn').addEventListener('click', () => {
+          const text = document.getElementById('prompt-preview').value;
+          navigator.clipboard.writeText(text).then(() => {
+            this.showToast('Copied to clipboard!');
+          }).catch(() => {
+            // Fallback
+            const textarea = document.getElementById('prompt-preview');
+            textarea.select();
+            document.execCommand('copy');
+            this.showToast('Copied to clipboard!');
+          });
+        });
+
+        document.getElementById('export-txt-btn').addEventListener('click', () => {
+          const text = document.getElementById('prompt-preview').value;
+          FileHandler.triggerDownload(text, 'prompt.txt');
+          this.showToast('Exported as .txt');
+        });
+
+        document.getElementById('export-md-btn').addEventListener('click', () => {
+          const text = document.getElementById('prompt-preview').value;
+          FileHandler.triggerDownload(text, 'prompt.md');
+          this.showToast('Exported as .md');
+        });
+      },
+
+      showToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+          toast.remove();
+        }, 2000);
+      }
+    };
+
+    // ============================================================================
+    // Initialize on DOM load
+    // ============================================================================
+    document.addEventListener('DOMContentLoaded', () => {
+      UI.init();
+    });
+  </script>
+</body>
+</html>
