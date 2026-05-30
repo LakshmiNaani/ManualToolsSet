@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flow Builder</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --color-bg: #f9fafb;
+  --color-surface: #ffffff;
+  --color-border: #e5e7eb;
+  --color-accent: #3b82f6;
+  --color-text: #111827;
+  --color-text-muted: #6b7280;
+  --radius: 8px;
+  --header-h: 50px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  color: var(--color-text);
+  background: var(--color-bg);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Header ── */
+header {
+  height: var(--header-h);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  gap: 8px;
+  flex-shrink: 0;
+}
+header h1 { font-size: 15px; font-weight: 700; margin-right: auto; }
+header h1 span { font-weight: 400; color: var(--color-text-muted); font-size: 12px; margin-left: 6px; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 11px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 13px; cursor: pointer; white-space: nowrap;
+  transition: background .12s, border-color .12s;
+}
+.btn:hover { background: var(--color-bg); border-color: #d1d5db; }
+.btn.accent { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
+.btn.accent:hover { background: #2563eb; border-color: #2563eb; }
+
+/* ── Layout ── */
+main { flex: 1; display: flex; overflow: hidden; }
+
+/* ── Left Panel ── */
+#left-panel {
+  width: 390px; flex-shrink: 0;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+
+#steps-label {
+  padding: 10px 14px 8px;
+  font-size: 11px; font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase; letter-spacing: .05em;
+  flex-shrink: 0;
+  display: flex; align-items: baseline; gap: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+#steps-label .hint { font-size: 11px; font-weight: 400; text-transform: none; letter-spacing: 0; color: #9ca3af; }
+
+#steps-panel { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 6px 0 2px; }
+
+/* ── Step Wrappers & Rows ── */
+.step-wrapper { display: flex; flex-direction: column; }
+
+.step-row {
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 8px 5px 12px;
+  border-left: 3px solid transparent;
+  transition: background .1s, border-color .1s, padding-left .12s;
+}
+.step-row:hover { background: #f9fafb; }
+.step-row.branch-yes { padding-left: 26px; border-left-color: #16a34a; background: #f0fdf4; }
+.step-row.branch-yes:hover { background: #dcfce7; }
+.step-row.branch-no  { padding-left: 26px; border-left-color: #dc2626; background: #fff5f5; }
+.step-row.branch-no:hover  { background: #fee2e2; }
+
+.step-label {
+  flex: 1; border: 1px solid #e5e7eb; border-radius: 5px;
+  padding: 5px 7px; font-size: 13px; font-family: inherit;
+  outline: none; min-width: 0; background: white;
+}
+.step-label:focus { border-color: var(--color-accent); box-shadow: 0 0 0 2px #bfdbfe; }
+
+.step-type {
+  border: 1px solid #e5e7eb; border-radius: 5px;
+  padding: 5px 3px; font-size: 12px; font-family: inherit;
+  background: white; color: var(--color-text);
+  outline: none; flex-shrink: 0; width: 108px;
+  cursor: pointer; transition: border-color .1s, background .1s;
+}
+.step-type:focus { border-color: var(--color-accent); }
+.step-type[data-val="start"]    { border-color: #059669; background: #f0fdf4; color: #065f46; }
+.step-type[data-val="end"]      { border-color: #6b7280; background: #f9fafb; color: #374151; }
+.step-type[data-val="decision"] { border-color: #d97706; background: #fffbeb; color: #92400e; }
+.step-type[data-val="yes"]      { border-color: #16a34a; background: #f0fdf4; color: #14532d; }
+.step-type[data-val="no"]       { border-color: #dc2626; background: #fff5f5; color: #991b1b; }
+
+option[value="start"]    { background: #d1fae5; }
+option[value="end"]      { background: #f3f4f6; }
+option[value="decision"] { background: #fef3c7; }
+option[value="yes"]      { background: #dcfce7; }
+option[value="no"]       { background: #fee2e2; }
+
+/* ── Color picker swatch ── */
+.step-color {
+  width: 26px; height: 26px;
+  padding: 2px; border: 1px solid #e5e7eb; border-radius: 4px;
+  cursor: pointer; flex-shrink: 0;
+  background: none; appearance: auto;
+}
+.step-color:hover { border-color: #9ca3af; }
+
+/* ── Note toggle button ── */
+.note-btn {
+  width: 26px; height: 26px;
+  border: 1px solid transparent; background: none;
+  color: #9ca3af; cursor: pointer; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; padding: 0;
+  transition: color .1s, background .1s, border-color .1s;
+}
+.note-btn:hover { background: #f0f9ff; color: #3b82f6; border-color: #bfdbfe; }
+.note-btn.open  { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+.note-btn.has-note { color: #059669; }
+.note-btn.has-note.open { background: #f0fdf4; border-color: #bbf7d0; color: #059669; }
+
+/* ── Delete button ── */
+.del-btn {
+  width: 22px; height: 22px; border: none; background: none;
+  color: #9ca3af; font-size: 17px; line-height: 1;
+  cursor: pointer; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; padding: 0;
+}
+.del-btn:hover { background: #fee2e2; color: #dc2626; }
+
+/* ── Note area ── */
+.note-area {
+  display: none; padding: 6px 10px 8px 36px;
+  background: #fafafa; border-bottom: 1px solid var(--color-border);
+}
+.step-wrapper:has(.branch-yes) .note-area { padding-left: 50px; background: #f7fef9; }
+.step-wrapper:has(.branch-no)  .note-area { padding-left: 50px; background: #fffafa; }
+
+.note-items { display: flex; flex-direction: column; gap: 4px; margin-bottom: 5px; }
+.note-item  { display: flex; align-items: center; gap: 4px; }
+.note-bullet { color: #9ca3af; font-size: 14px; flex-shrink: 0; width: 10px; }
+
+.note-item-input {
+  flex: 1; border: 1px solid #e5e7eb; border-radius: 4px;
+  padding: 3px 6px; font-size: 12px; font-family: inherit;
+  outline: none; background: white; min-width: 0;
+}
+.note-item-input:focus { border-color: #93c5fd; box-shadow: 0 0 0 2px #bfdbfe; }
+.note-item-input::placeholder { color: #9ca3af; font-style: italic; }
+
+.note-item-del {
+  width: 18px; height: 18px; border: none; background: none;
+  color: #9ca3af; font-size: 14px; cursor: pointer;
+  border-radius: 3px; flex-shrink: 0; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.note-item-del:hover { background: #fee2e2; color: #dc2626; }
+
+.add-note-btn {
+  font-size: 11px; color: #3b82f6;
+  background: none; border: none; cursor: pointer; padding: 0; text-align: left;
+}
+.add-note-btn:hover { text-decoration: underline; }
+
+/* ── Add step bar ── */
+#add-bar { flex-shrink: 0; padding: 10px 12px; border-top: 1px solid var(--color-border); }
+#add-btn { width: 100%; justify-content: center; font-size: 13px; padding: 8px; }
+
+/* ── Right Panel ── */
+#right-panel {
+  flex: 1; overflow: auto;
+  background: radial-gradient(circle, #d1d5db 1px, transparent 1px) 0 0 / 22px 22px;
+  background-color: var(--color-bg);
+}
+#diagram-svg { display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Flow Builder <span>add steps on the left, diagram draws itself</span></h1>
+  <button class="btn accent" onclick="exportPNG()">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.7">
+      <rect x="1" y="1" width="11" height="11" rx="2"/>
+      <line x1="6.5" y1="9" x2="6.5" y2="4"/><polyline points="4,7 6.5,9 9,7"/>
+    </svg>Export PNG
+  </button>
+  <button class="btn" onclick="exportMD()">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.7">
+      <rect x="1" y="1" width="11" height="11" rx="2"/>
+      <line x1="4" y1="4" x2="4" y2="9"/><line x1="9" y1="4" x2="9" y2="9"/>
+      <polyline points="4,6.5 6.5,4 9,6.5"/>
+    </svg>Export MD
+  </button>
+  <button class="btn" onclick="triggerImport()">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.7">
+      <rect x="1" y="1" width="11" height="11" rx="2"/>
+      <line x1="6.5" y1="4" x2="6.5" y2="9"/><polyline points="4,6 6.5,4 9,6"/>
+    </svg>Import MD
+  </button>
+  <input type="file" id="import-file-input" accept=".md,.markdown,text/plain" style="display:none">
+  <button class="btn" onclick="clearAll()">Clear</button>
+</header>
+
+<main>
+  <aside id="left-panel">
+    <div id="steps-label">
+      Steps
+      <span class="hint">add in order · Yes/No Branch after a Decision</span>
+    </div>
+    <div id="steps-panel"></div>
+    <div id="add-bar">
+      <button id="add-btn" class="btn">+ Add Step</button>
+    </div>
+  </aside>
+
+  <section id="right-panel">
+    <svg id="diagram-svg" width="2000" height="1500" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr-end" markerWidth="10" markerHeight="7"
+                refX="9" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
+          <polygon points="0 0,10 3.5,0 7" fill="#6b7280"/>
+        </marker>
+      </defs>
+      <rect id="svg-bg" x="0" y="0" width="2000" height="1500" fill="white"/>
+      <g id="edges-layer"></g>
+      <g id="nodes-layer"></g>
+    </svg>
+  </section>
+</main>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════════════════════
+const CX          = 600;
+const BRANCH_DX   = 260;
+const YPAD        = 90;
+const LEVEL_GAP   = 80;
+const NOTE_LINE_H = 16;
+const NOTE_PAD    = 8;
+const NOTE_GAP    = 4;
+
+// Default fill colors per step type (also used for resetting on type change)
+const TYPE_COLORS = {
+  process:  '#dbeafe',
+  start:    '#d1fae5',
+  end:      '#f3f4f6',
+  decision: '#fef3c7',
+  yes:      '#dcfce7',
+  no:       '#fee2e2',
+};
+
+// ═══════════════════════════════════════════════════════════
+//  DOM
+// ═══════════════════════════════════════════════════════════
+const stepsPanel = document.getElementById('steps-panel');
+const addBtn     = document.getElementById('add-btn');
+const svg        = document.getElementById('diagram-svg');
+const edgesLayer = document.getElementById('edges-layer');
+const nodesLayer = document.getElementById('nodes-layer');
+
+// ═══════════════════════════════════════════════════════════
+//  UTILITIES
+// ═══════════════════════════════════════════════════════════
+const NS = 'http://www.w3.org/2000/svg';
+function svgEl(tag) { return document.createElementNS(NS, tag); }
+
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+function wrapText(text, maxChars) {
+  if (!text) return [''];
+  const mc = Math.max(6, maxChars || 18);
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines = []; let cur = '';
+  for (const word of words) {
+    const test = cur ? cur + ' ' + word : word;
+    if (test.length <= mc) { cur = test; }
+    else {
+      if (cur) lines.push(cur);
+      cur = word.length > mc ? word.slice(0, mc - 1) + '…' : word;
+      if (lines.length >= 2) { lines.push(cur); cur = ''; break; }
+    }
+  }
+  if (cur) lines.push(cur);
+  return lines.length ? lines : [''];
+}
+
+function dlBlob(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function inlineStyles(srcSvg, destSvg) {
+  const se = srcSvg.querySelectorAll('*');
+  const de = destSvg.querySelectorAll('*');
+  const props = ['fill','stroke','stroke-width','stroke-dasharray','font-size','font-weight',
+                 'font-family','opacity','display','text-anchor','dominant-baseline'];
+  se.forEach((el, i) => {
+    const dest = de[i]; if (!dest) return;
+    const cs = getComputedStyle(el);
+    props.forEach(p => {
+      const v = cs.getPropertyValue(p);
+      if (v) {
+        const js = p.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+        try { dest.style[js] = v; } catch(e) {}
+      }
+    });
+    ['fill','stroke','stroke-width','opacity'].forEach(a => {
+      if (el.hasAttribute(a)) dest.setAttribute(a, el.getAttribute(a));
+    });
+  });
+}
+
+// Darken a hex color by a factor (0=black, 1=same)
+function darkenHex(hex, factor) {
+  const n = parseInt(hex.replace('#',''), 16);
+  const r = Math.round(((n >> 16) & 0xff) * factor);
+  const g = Math.round(((n >> 8)  & 0xff) * factor);
+  const b = Math.round((n & 0xff) * factor);
+  return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
+}
+
+// Height of note box in the diagram
+function noteBoxH(notes) {
+  if (!notes || notes.length === 0) return 0;
+  return NOTE_GAP + NOTE_PAD * 2 + notes.length * NOTE_LINE_H;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ROW & NOTE MANAGEMENT
+// ═══════════════════════════════════════════════════════════
+let rowCounter = 0;
+
+function updateRowClass(row) {
+  const v = row.querySelector('.step-type').value;
+  row.classList.remove('branch-yes', 'branch-no');
+  if (v === 'yes') row.classList.add('branch-yes');
+  if (v === 'no')  row.classList.add('branch-no');
+}
+
+function updateNoteIndicator(wrapper) {
+  const btn = wrapper.querySelector('.note-btn');
+  const hasNotes = [...wrapper.querySelectorAll('.note-item-input')]
+    .some(i => i.value.trim().length > 0);
+  btn.classList.toggle('has-note', hasNotes);
+}
+
+function addNoteItem(noteItems, value) {
+  const item = document.createElement('div');
+  item.className = 'note-item';
+
+  const bullet = document.createElement('span');
+  bullet.className = 'note-bullet';
+  bullet.textContent = '•';
+
+  const inp = document.createElement('input');
+  inp.type = 'text'; inp.className = 'note-item-input';
+  inp.placeholder = 'Note…'; inp.value = value || '';
+
+  const del = document.createElement('button');
+  del.className = 'note-item-del'; del.type = 'button';
+  del.title = 'Remove note'; del.textContent = '×';
+
+  item.appendChild(bullet); item.appendChild(inp); item.appendChild(del);
+  noteItems.appendChild(item);
+  return item;
+}
+
+function appendRow(label, typeVal, notes, fillColor) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'step-wrapper';
+
+  const row = document.createElement('div');
+  row.className = 'step-row';
+  row.dataset.id = 'r' + rowCounter++;
+
+  // Label input
+  const inp = document.createElement('input');
+  inp.type = 'text'; inp.className = 'step-label';
+  inp.placeholder = 'Step label…'; inp.value = label || '';
+
+  // Type select
+  const sel = document.createElement('select');
+  sel.className = 'step-type';
+  [
+    ['process',  'Step'],
+    ['start',    'Start'],
+    ['end',      'End'],
+    ['decision', 'Decision'],
+    ['yes',      'Yes Branch'],
+    ['no',       'No Branch'],
+  ].forEach(([val, txt]) => {
+    const opt = document.createElement('option');
+    opt.value = val; opt.textContent = txt;
+    if (val === (typeVal || 'process')) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  sel.dataset.val = sel.value;
+
+  // Color picker
+  const color = document.createElement('input');
+  color.type = 'color';
+  color.className = 'step-color';
+  color.title = 'Change node color';
+  color.value = fillColor || TYPE_COLORS[typeVal || 'process'] || '#dbeafe';
+
+  // Note toggle button
+  const noteBtn = document.createElement('button');
+  noteBtn.className = 'note-btn'; noteBtn.type = 'button';
+  noteBtn.title = 'Toggle notes';
+  noteBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="1" width="9" height="11" rx="1.5"/><line x1="4.5" y1="4" x2="8.5" y2="4"/><line x1="4.5" y1="6.5" x2="8.5" y2="6.5"/><line x1="4.5" y1="9" x2="7" y2="9"/></svg>`;
+
+  // Delete button
+  const del = document.createElement('button');
+  del.className = 'del-btn'; del.type = 'button';
+  del.title = 'Remove step'; del.textContent = '×';
+
+  row.appendChild(inp);
+  row.appendChild(sel);
+  row.appendChild(color);
+  row.appendChild(noteBtn);
+  row.appendChild(del);
+
+  // Note area
+  const noteArea = document.createElement('div');
+  noteArea.className = 'note-area';
+  const noteItems = document.createElement('div');
+  noteItems.className = 'note-items';
+  const addNoteBtn = document.createElement('button');
+  addNoteBtn.className = 'add-note-btn'; addNoteBtn.type = 'button';
+  addNoteBtn.textContent = '+ Add note';
+  noteArea.appendChild(noteItems);
+  noteArea.appendChild(addNoteBtn);
+
+  wrapper.appendChild(row);
+  wrapper.appendChild(noteArea);
+  stepsPanel.appendChild(wrapper);
+  updateRowClass(row);
+
+  // Pre-populate notes
+  if (notes && notes.length > 0) {
+    notes.forEach(n => addNoteItem(noteItems, n));
+    noteArea.style.display = 'block';
+    noteBtn.classList.add('open', 'has-note');
+  }
+
+  // Toggle note area
+  noteBtn.addEventListener('click', () => {
+    const isOpen = noteArea.style.display === 'block';
+    noteArea.style.display = isOpen ? 'none' : 'block';
+    noteBtn.classList.toggle('open', !isOpen);
+    if (!isOpen) {
+      if (noteItems.children.length === 0)
+        addNoteItem(noteItems, '').querySelector('.note-item-input').focus();
+      else
+        noteItems.querySelector('.note-item-input').focus();
+    }
+  });
+
+  // Add note inside note area
+  addNoteBtn.addEventListener('click', () => {
+    addNoteItem(noteItems, '').querySelector('.note-item-input').focus();
+    updateNoteIndicator(wrapper);
+    debouncedRefresh();
+  });
+
+  return wrapper;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PARSE ROWS → GRAPH
+// ═══════════════════════════════════════════════════════════
+function parseRows() {
+  const rows = [...stepsPanel.querySelectorAll('.step-row')];
+  const nodes = new Map();
+  const edges = [];
+  let nid = 0;
+  const mkId = () => 'n' + nid++;
+
+  const classified = rows.map(row => {
+    const wrapper = row.closest('.step-wrapper');
+    const notes = wrapper
+      ? [...wrapper.querySelectorAll('.note-item-input')].map(i => i.value.trim()).filter(Boolean)
+      : [];
+    const fillColor = row.querySelector('.step-color').value;
+    return {
+      label:     row.querySelector('.step-label').value.trim() || '…',
+      typeVal:   row.querySelector('.step-type').value,
+      notes,
+      fillColor,
+    };
+  });
+
+  if (classified.length === 0) return { nodes, edges };
+
+  // Auto start/end if not explicitly set
+  const mainItems = classified.filter(c => c.typeVal !== 'yes' && c.typeVal !== 'no');
+  if (mainItems.length > 0) {
+    if (!mainItems.some(c => c.typeVal === 'start') && mainItems[0].typeVal === 'process')
+      mainItems[0].typeVal = 'start';
+    if (!mainItems.some(c => c.typeVal === 'end')) {
+      const last = mainItems[mainItems.length - 1];
+      if (last.typeVal === 'process') last.typeVal = 'end';
+    }
+  }
+
+  let prevIds = [];
+  let i = 0;
+
+  while (i < classified.length) {
+    const cl = classified[i];
+    if (cl.typeVal === 'yes' || cl.typeVal === 'no') { i++; continue; }
+
+    const id = mkId();
+    const nodeType = cl.typeVal === 'decision' ? 'decision'
+                   : cl.typeVal === 'start'    ? 'start'
+                   : cl.typeVal === 'end'      ? 'end'
+                   :                             'process';
+    const strokeColor = darkenHex(cl.fillColor, 0.58);
+    nodes.set(id, { id, label: cl.label, type: nodeType, branch: null,
+                    notes: cl.notes, fill: cl.fillColor, stroke: strokeColor });
+
+    for (const prev of prevIds)
+      edges.push({ from: prev.id, to: id, label: prev.edgeLabel || '', style: prev.style || 'main' });
+    prevIds = [];
+
+    if (cl.typeVal === 'decision') {
+      let j = i + 1;
+      while (j < classified.length && (classified[j].typeVal === 'yes' || classified[j].typeVal === 'no')) j++;
+      const branchRows = classified.slice(i + 1, j);
+      i = j;
+
+      const yesRows = branchRows.filter(r => r.typeVal === 'yes');
+      const noRows  = branchRows.filter(r => r.typeVal === 'no');
+
+      let yesLastId = null;
+      yesRows.forEach((yr, k) => {
+        const yid = mkId();
+        nodes.set(yid, { id: yid, label: yr.label, type: 'process', branch: 'yes',
+                         notes: yr.notes, fill: yr.fillColor, stroke: darkenHex(yr.fillColor, 0.58) });
+        edges.push({ from: k === 0 ? id : yesLastId, to: yid, label: k === 0 ? 'yes' : '', style: 'yes' });
+        yesLastId = yid;
+      });
+
+      let noLastId = null;
+      noRows.forEach((nr, k) => {
+        const nid2 = mkId();
+        nodes.set(nid2, { id: nid2, label: nr.label, type: 'process', branch: 'no',
+                          notes: nr.notes, fill: nr.fillColor, stroke: darkenHex(nr.fillColor, 0.58) });
+        edges.push({ from: k === 0 ? id : noLastId, to: nid2, label: k === 0 ? 'no' : '', style: 'no' });
+        noLastId = nid2;
+      });
+
+      prevIds.push(yesLastId ? { id: yesLastId, edgeLabel: '', style: 'yes' }
+                             : { id, edgeLabel: 'yes', style: 'yes' });
+      prevIds.push(noLastId  ? { id: noLastId,  edgeLabel: '', style: 'no'  }
+                             : { id, edgeLabel: 'no',  style: 'no'  });
+    } else {
+      prevIds = [{ id, edgeLabel: '', style: 'main' }];
+      i++;
+    }
+  }
+
+  return { nodes, edges };
+}
+
+// ═══════════════════════════════════════════════════════════
+//  LAYOUT — cumulative level heights based on note boxes
+// ═══════════════════════════════════════════════════════════
+const DIMS = {
+  process:  { w: 152, h: 46 },
+  start:    { w: 144, h: 42 },
+  end:      { w: 144, h: 42 },
+  decision: { w: 160, h: 64 },
+};
+
+function layout(nodes, edges) {
+  const positions = new Map();
+  if (nodes.size === 0) return positions;
+
+  const levels = new Map();
+  nodes.forEach((_, id) => levels.set(id, -1));
+  const hasIncoming = new Set(edges.map(e => e.to));
+  nodes.forEach((_, id) => { if (!hasIncoming.has(id)) levels.set(id, 0); });
+
+  let changed = true;
+  for (let pass = 0; pass < nodes.size + 2 && changed; pass++) {
+    changed = false;
+    edges.forEach(e => {
+      const fl = levels.get(e.from);
+      if (fl === undefined || fl < 0) return;
+      const want = fl + 1;
+      if (want > (levels.get(e.to) ?? -1)) { levels.set(e.to, want); changed = true; }
+    });
+  }
+
+  // Max (shapeH + noteBoxH) per level
+  const levelMaxH = new Map();
+  nodes.forEach((node, id) => {
+    const lv = Math.max(0, levels.get(id) || 0);
+    const { h } = DIMS[node.type] || DIMS.process;
+    const total = h + noteBoxH(node.notes);
+    levelMaxH.set(lv, Math.max(levelMaxH.get(lv) || 0, total));
+  });
+
+  // Cumulative top positions per level
+  const levelTop = new Map();
+  let curTop = YPAD;
+  const maxLevel = [...levels.values()].filter(v => v >= 0).reduce((a, b) => Math.max(a, b), 0);
+  for (let l = 0; l <= maxLevel; l++) {
+    levelTop.set(l, curTop);
+    curTop += (levelMaxH.get(l) || 46) + LEVEL_GAP;
+  }
+
+  nodes.forEach((node, id) => {
+    const lv = Math.max(0, levels.get(id) || 0);
+    const top = levelTop.get(lv) ?? YPAD;
+    const { w, h } = DIMS[node.type] || DIMS.process;
+    const y = top + h / 2;
+    const x = node.branch === 'yes' ? CX + BRANCH_DX
+             : node.branch === 'no'  ? CX - BRANCH_DX
+             :                         CX;
+    positions.set(id, { x, y, w, h, noteH: noteBoxH(node.notes) });
+  });
+
+  return positions;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════════
+function render(nodes, edges, positions) {
+  edgesLayer.innerHTML = '';
+  nodesLayer.innerHTML = '';
+  if (nodes.size === 0) return;
+
+  // ── Edges ─────────────────────────────────────────────
+  edges.forEach(edge => {
+    const fp = positions.get(edge.from);
+    const tp = positions.get(edge.to);
+    const fn = nodes.get(edge.from);
+    if (!fp || !tp) return;
+
+    let x1, y1;
+    if (fn.type === 'decision') {
+      if (edge.style === 'yes')     { x1 = fp.x + fp.w / 2; y1 = fp.y; }
+      else if (edge.style === 'no') { x1 = fp.x - fp.w / 2; y1 = fp.y; }
+      else                          { x1 = fp.x;             y1 = fp.y + fp.h / 2 + fp.noteH; }
+    } else {
+      x1 = fp.x;
+      y1 = fp.y + fp.h / 2 + fp.noteH;
+    }
+    const x2 = tp.x;
+    const y2 = tp.y - tp.h / 2;
+
+    let d;
+    if (Math.abs(x1 - x2) < 4) {
+      d = `M${x1},${y1} L${x2},${y2}`;
+    } else {
+      const pull = Math.max(50, Math.abs(y2 - y1) * 0.45);
+      d = `M${x1},${y1} C${x1},${y1 + pull} ${x2},${y2 - pull} ${x2},${y2}`;
+    }
+
+    const path = svgEl('path');
+    path.setAttribute('d', d);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', edge.style === 'yes' ? '#16a34a' : edge.style === 'no' ? '#dc2626' : '#6b7280');
+    path.setAttribute('stroke-width', '1.6');
+    path.setAttribute('marker-end', 'url(#arr-end)');
+    edgesLayer.appendChild(path);
+
+    if (edge.label) {
+      const lx = x1 + (x2 - x1) * 0.28;
+      const ly = y1 + (y2 - y1) * 0.28;
+      const bg = svgEl('rect');
+      bg.setAttribute('x', lx - 14); bg.setAttribute('y', ly - 9);
+      bg.setAttribute('width', '28'); bg.setAttribute('height', '17');
+      bg.setAttribute('fill', 'white'); bg.setAttribute('rx', '4');
+      edgesLayer.appendChild(bg);
+      const lt = svgEl('text');
+      lt.setAttribute('x', lx); lt.setAttribute('y', ly + 1);
+      lt.setAttribute('text-anchor', 'middle');
+      lt.setAttribute('dominant-baseline', 'middle');
+      lt.setAttribute('font-size', '11');
+      lt.setAttribute('font-family', 'system-ui, -apple-system, sans-serif');
+      lt.setAttribute('font-weight', '700');
+      lt.setAttribute('fill', edge.style === 'yes' ? '#16a34a' : '#dc2626');
+      lt.textContent = edge.label;
+      edgesLayer.appendChild(lt);
+    }
+  });
+
+  // ── Nodes ─────────────────────────────────────────────
+  nodes.forEach((node, id) => {
+    const pos = positions.get(id);
+    if (!pos) return;
+    const g = svgEl('g');
+    g.setAttribute('transform', `translate(${pos.x},${pos.y})`);
+    const hw = pos.w / 2, hh = pos.h / 2;
+    const fill = node.fill || '#dbeafe';
+    const stroke = node.stroke || '#2563eb';
+
+    // Shape
+    if (node.type === 'decision') {
+      const poly = svgEl('polygon');
+      poly.setAttribute('points', `0,${-hh} ${hw},0 0,${hh} ${-hw},0`);
+      poly.setAttribute('fill', fill);
+      poly.setAttribute('stroke', stroke);
+      poly.setAttribute('stroke-width', '2');
+      g.appendChild(poly);
+    } else if (node.type === 'start') {
+      const el = svgEl('ellipse');
+      el.setAttribute('rx', hw); el.setAttribute('ry', hh);
+      el.setAttribute('fill', fill); el.setAttribute('stroke', stroke);
+      el.setAttribute('stroke-width', '2');
+      g.appendChild(el);
+    } else if (node.type === 'end') {
+      const el = svgEl('ellipse');
+      el.setAttribute('rx', hw); el.setAttribute('ry', hh);
+      el.setAttribute('fill', fill); el.setAttribute('stroke', stroke);
+      el.setAttribute('stroke-width', '2.5');
+      g.appendChild(el);
+      const el2 = svgEl('ellipse');
+      el2.setAttribute('rx', hw - 5); el2.setAttribute('ry', hh - 5);
+      el2.setAttribute('fill', 'none'); el2.setAttribute('stroke', stroke);
+      el2.setAttribute('stroke-width', '1.2');
+      g.appendChild(el2);
+    } else {
+      const rect = svgEl('rect');
+      rect.setAttribute('x', -hw); rect.setAttribute('y', -hh);
+      rect.setAttribute('width', pos.w); rect.setAttribute('height', pos.h);
+      rect.setAttribute('rx', '7');
+      rect.setAttribute('fill', fill); rect.setAttribute('stroke', stroke);
+      rect.setAttribute('stroke-width', '2');
+      g.appendChild(rect);
+    }
+
+    // Label text
+    const lines = wrapText(node.label, 18);
+    const lineH = 15;
+    const txt = svgEl('text');
+    txt.setAttribute('text-anchor', 'middle');
+    txt.setAttribute('dominant-baseline', 'central');
+    txt.setAttribute('font-size', '12');
+    txt.setAttribute('font-family', 'system-ui, -apple-system, sans-serif');
+    txt.setAttribute('fill', '#111827');
+    txt.setAttribute('font-weight', '500');
+    if (lines.length === 1) {
+      txt.textContent = lines[0];
+    } else {
+      const startDy = -((lines.length - 1) * lineH) / 2;
+      lines.forEach((line, k) => {
+        const ts = svgEl('tspan');
+        ts.setAttribute('x', '0');
+        ts.setAttribute('dy', k === 0 ? startDy : lineH);
+        ts.textContent = line;
+        txt.appendChild(ts);
+      });
+    }
+    g.appendChild(txt);
+
+    // Note box — attached below shape
+    if (node.notes && node.notes.length > 0) {
+      const nbTopRel = hh + NOTE_GAP;
+      const nbH = NOTE_PAD * 2 + node.notes.length * NOTE_LINE_H;
+
+      const nbRect = svgEl('rect');
+      nbRect.setAttribute('x', -hw); nbRect.setAttribute('y', nbTopRel);
+      nbRect.setAttribute('width', pos.w); nbRect.setAttribute('height', nbH);
+      nbRect.setAttribute('rx', '5');
+      nbRect.setAttribute('fill', '#fffbeb');
+      nbRect.setAttribute('stroke', '#fcd34d');
+      nbRect.setAttribute('stroke-width', '1.2');
+      g.appendChild(nbRect);
+
+      // Dashed line between shape and note box
+      const conn = svgEl('line');
+      conn.setAttribute('x1', -hw + 10); conn.setAttribute('y1', hh);
+      conn.setAttribute('x2',  hw - 10); conn.setAttribute('y2', hh);
+      conn.setAttribute('stroke', '#fcd34d');
+      conn.setAttribute('stroke-width', '1');
+      conn.setAttribute('stroke-dasharray', '3,3');
+      g.appendChild(conn);
+
+      const maxNoteChars = Math.floor(pos.w / 5.8) - 1;
+      node.notes.forEach((note, idx) => {
+        const display = '• ' + (note.length > maxNoteChars ? note.slice(0, maxNoteChars - 1) + '…' : note);
+        const nt = svgEl('text');
+        nt.setAttribute('x', -hw + 7);
+        nt.setAttribute('y', nbTopRel + NOTE_PAD + idx * NOTE_LINE_H + 2);
+        nt.setAttribute('font-size', '10');
+        nt.setAttribute('fill', '#78350f');
+        nt.setAttribute('font-family', 'system-ui, -apple-system, sans-serif');
+        nt.setAttribute('dominant-baseline', 'hanging');
+        nt.textContent = display;
+        g.appendChild(nt);
+      });
+    }
+
+    nodesLayer.appendChild(g);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  REFRESH
+// ═══════════════════════════════════════════════════════════
+function refresh() {
+  const { nodes, edges } = parseRows();
+  const positions = layout(nodes, edges);
+  render(nodes, edges, positions);
+}
+
+const debouncedRefresh = debounce(refresh, 180);
+
+// ═══════════════════════════════════════════════════════════
+//  EVENTS — delegation on stepsPanel
+// ═══════════════════════════════════════════════════════════
+stepsPanel.addEventListener('input', e => {
+  if (e.target.classList.contains('note-item-input'))
+    updateNoteIndicator(e.target.closest('.step-wrapper'));
+  debouncedRefresh();
+});
+
+stepsPanel.addEventListener('change', e => {
+  const t = e.target;
+  if (t.classList.contains('step-type')) {
+    t.dataset.val = t.value;
+    updateRowClass(t.closest('.step-row'));
+    // Reset color to type default when type changes
+    const colorPicker = t.closest('.step-row').querySelector('.step-color');
+    colorPicker.value = TYPE_COLORS[t.value] || '#dbeafe';
+    refresh();
+  }
+  if (t.classList.contains('step-color')) {
+    refresh();
+  }
+});
+
+stepsPanel.addEventListener('click', e => {
+  if (e.target.classList.contains('del-btn')) {
+    const wrapper = e.target.closest('.step-wrapper');
+    if (stepsPanel.querySelectorAll('.step-row').length > 1) {
+      wrapper.remove(); refresh();
+    }
+    return;
+  }
+  if (e.target.classList.contains('note-item-del')) {
+    const item = e.target.closest('.note-item');
+    const wrapper = item.closest('.step-wrapper');
+    item.remove();
+    updateNoteIndicator(wrapper);
+    refresh();
+  }
+});
+
+addBtn.addEventListener('click', () => {
+  appendRow('', 'process');
+  const rows = stepsPanel.querySelectorAll('.step-row');
+  rows[rows.length - 1].querySelector('.step-label').focus();
+  debouncedRefresh();
+});
+
+// ═══════════════════════════════════════════════════════════
+//  EXPORT PNG
+// ═══════════════════════════════════════════════════════════
+function exportPNG() {
+  if (nodesLayer.children.length === 0) { alert('Nothing to export yet.'); return; }
+  const bb = nodesLayer.getBBox();
+  const pad = 50;
+  const vx = bb.x - pad, vy = bb.y - pad;
+  const vw = bb.width + pad * 2, vh = bb.height + pad * 2;
+
+  const clone = svg.cloneNode(true);
+  clone.setAttribute('viewBox', `${vx} ${vy} ${vw} ${vh}`);
+  clone.setAttribute('width', vw * 2); clone.setAttribute('height', vh * 2);
+  const bgRect = clone.querySelector('#svg-bg');
+  if (bgRect) {
+    bgRect.setAttribute('x', vx); bgRect.setAttribute('y', vy);
+    bgRect.setAttribute('width', vw); bgRect.setAttribute('height', vh);
+  }
+  inlineStyles(svg, clone);
+  const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(clone)],
+                                           { type: 'image/svg+xml;charset=utf-8' }));
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = vw * 2; canvas.height = vh * 2;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0);
+    URL.revokeObjectURL(url);
+    canvas.toBlob(b => dlBlob(b, 'flow.png'), 'image/png');
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); alert('PNG export failed. Try Chrome or Edge.'); };
+  img.src = url;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  EXPORT MD
+// ═══════════════════════════════════════════════════════════
+function exportMD() {
+  const { nodes, edges } = parseRows();
+  if (nodes.size === 0) { alert('Nothing to export yet.'); return; }
+
+  const mLines = ['flowchart TD'];
+  nodes.forEach((node, id) => {
+    const lbl = node.label.replace(/"/g, "'");
+    if (node.type === 'start' || node.type === 'end') mLines.push(`  ${id}([${lbl}])`);
+    else if (node.type === 'decision') mLines.push(`  ${id}{${lbl}}`);
+    else mLines.push(`  ${id}[${lbl}]`);
+  });
+  edges.forEach(e => {
+    mLines.push(`  ${e.from} ${e.label ? `-->|${e.label}|` : '-->'} ${e.to}`);
+  });
+
+  const rowData = [...stepsPanel.querySelectorAll('.step-row')].map(r => {
+    const wrapper = r.closest('.step-wrapper');
+    const notes = wrapper
+      ? [...wrapper.querySelectorAll('.note-item-input')].map(i => i.value.trim()).filter(Boolean)
+      : [];
+    return {
+      label: r.querySelector('.step-label').value,
+      type:  r.querySelector('.step-type').value,
+      color: r.querySelector('.step-color').value,
+      notes,
+    };
+  });
+
+  const notesSections = rowData
+    .filter(r => r.notes.length > 0)
+    .map(r => `### ${r.label}\n\n${r.notes.map(n => `- ${n}`).join('\n')}`)
+    .join('\n\n');
+
+  const md = [
+    '# Flow Diagram', '',
+    '## Diagram', '',
+    '```mermaid',
+    mLines.join('\n'),
+    '```',
+    ...(notesSections ? ['', '## Step Notes', '', notesSections] : []),
+    '',
+    '<!-- flow-builder-data',
+    JSON.stringify(rowData, null, 2),
+    '-->',
+  ].join('\n');
+
+  dlBlob(new Blob([md], { type: 'text/markdown' }), 'flow.md');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CLEAR
+// ═══════════════════════════════════════════════════════════
+function clearAll() {
+  stepsPanel.innerHTML = '';
+  appendRow('', 'start');
+  edgesLayer.innerHTML = '';
+  nodesLayer.innerHTML = '';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  IMPORT MD
+// ═══════════════════════════════════════════════════════════
+function triggerImport() {
+  document.getElementById('import-file-input').click();
+}
+
+document.getElementById('import-file-input').addEventListener('change', function () {
+  const file = this.files[0];
+  if (!file) return;
+  this.value = '';
+  const reader = new FileReader();
+  reader.onload = e => importMDContent(e.target.result);
+  reader.readAsText(file, 'utf-8');
+});
+
+function importMDContent(content) {
+  // 1. Our own JSON comment — perfect round-trip
+  const jsonMatch = content.match(/<!--\s*flow-builder-data\s*([\s\S]*?)-->/);
+  if (jsonMatch) {
+    try {
+      const rows = JSON.parse(jsonMatch[1].trim());
+      if (Array.isArray(rows) && rows.length > 0) {
+        stepsPanel.innerHTML = '';
+        rows.forEach(r => appendRow(r.label || '', r.type || 'process', r.notes || [], r.color || null));
+        refresh();
+        return;
+      }
+    } catch (e) {}
+  }
+
+  // 2. Parse mermaid block (any format)
+  const mermaidMatch = content.match(/```mermaid\s*([\s\S]*?)```/);
+  if (!mermaidMatch) {
+    alert('Could not find a mermaid diagram or flow-builder data in this file.');
+    return;
+  }
+  importFromMermaid(mermaidMatch[1], content);
+}
+
+function importFromMermaid(mermaid, fullContent) {
+  const lines = mermaid.split('\n').map(l => l.trim()).filter(Boolean);
+
+  const nodeDefs = new Map();  // id → { label, shape: 'stadium'|'decision'|'process' }
+  const edges    = [];         // { from, to, label }
+
+  for (const line of lines) {
+    if (/^(flowchart|graph)\s/i.test(line)) continue;
+
+    // Edge: n0 -->|label| n1  or  n0 --> n1
+    const edgeM = line.match(/^(\w+)\s+-->\|?([^|]*?)\|?\s+(\w+)$/);
+    if (edgeM) { edges.push({ from: edgeM[1], to: edgeM[3], label: edgeM[2].trim() }); continue; }
+
+    // Stadium: n0([label])
+    const mSta = line.match(/^(\w+)\(\[(.+?)\]\)/);
+    if (mSta) { nodeDefs.set(mSta[1], { label: mSta[2], shape: 'stadium' }); continue; }
+
+    // Diamond: n0{label} or n0{{label}}
+    const mDia = line.match(/^(\w+)\{+(.+?)\}+/);
+    if (mDia) { nodeDefs.set(mDia[1], { label: mDia[2], shape: 'decision' }); continue; }
+
+    // Rectangle: n0[label]
+    const mRect = line.match(/^(\w+)\[(.+?)\]/);
+    if (mRect) { nodeDefs.set(mRect[1], { label: mRect[2], shape: 'process' }); continue; }
+  }
+
+  if (nodeDefs.size === 0) { alert('Could not parse any nodes from the mermaid diagram.'); return; }
+
+  // Build adjacency
+  const outMap = new Map();
+  const inMap  = new Map();
+  nodeDefs.forEach((_, id) => { outMap.set(id, []); inMap.set(id, []); });
+  edges.forEach(e => {
+    if (!nodeDefs.has(e.from) || !nodeDefs.has(e.to)) return;
+    outMap.get(e.from).push({ to: e.to, label: e.label });
+    inMap.get(e.to).push({ from: e.from, label: e.label });
+  });
+
+  // Assign direct branch type from incoming edge labels
+  const branchOf = new Map();
+  nodeDefs.forEach((_, id) => {
+    const ins = inMap.get(id) || [];
+    const y = ins.find(e => e.label.toLowerCase() === 'yes');
+    const n = ins.find(e => e.label.toLowerCase() === 'no');
+    branchOf.set(id, y ? 'yes' : n ? 'no' : null);
+  });
+
+  // Propagate through single-parent chains
+  let changed = true;
+  while (changed) {
+    changed = false;
+    nodeDefs.forEach((_, id) => {
+      if (branchOf.get(id) !== null) return;
+      const ins = inMap.get(id) || [];
+      if (ins.length !== 1) return;
+      const pb = branchOf.get(ins[0].from);
+      if (pb === 'yes' || pb === 'no') { branchOf.set(id, pb); changed = true; }
+    });
+  }
+
+  // Parse notes from multiple possible sections ─────────────────────
+  const notesMap = {};  // label → string[]
+
+  // Our own ## Step Notes
+  const snM = fullContent.match(/##\s*Step Notes\s*\n([\s\S]*?)(?=\n##\s|\n<!--\s*flow|$)/);
+  if (snM) {
+    for (const [, label, body] of snM[1].matchAll(/###\s+(.+?)\n([\s\S]*?)(?=###|$)/g)) {
+      const notes = [...body.matchAll(/^-\s+(.+)/gm)].map(m => m[1].trim());
+      if (notes.length) notesMap[label.trim()] = notes;
+    }
+  }
+
+  // workflow_diagram_builder ## Node Details
+  const ndM = fullContent.match(/##\s*Node Details\s*\n([\s\S]*?)(?=\n##\s|$)/);
+  if (ndM) {
+    for (const [, label,, body] of ndM[1].matchAll(/###\s+(.+?)\s*(\([^)]*\))?\s*\n([\s\S]*?)(?=###|$)/g)) {
+      const nb = body.match(/\*\*Notes:\*\*\s*\n([\s\S]*?)(?=\n\*\*|$)/);
+      if (nb) {
+        const notes = [...nb[1].matchAll(/^-\s+(.+)/gm)].map(m => m[1].trim());
+        if (notes.length) notesMap[label.trim()] = notes;
+      }
+    }
+  }
+
+  // DFS walk preserving decision→yes→no→merge order ─────────────────
+  const orderedIds = [];
+  const visited    = new Set();
+
+  function walkBranch(id, branch) {
+    if (!id || visited.has(id) || !nodeDefs.has(id)) return;
+    if (branchOf.get(id) !== branch) return;
+    if ((inMap.get(id) || []).length > 1) return;  // merge point — stop
+    visited.add(id);
+    orderedIds.push(id);
+    const next = (outMap.get(id) || []).find(e => branchOf.get(e.to) === branch && !visited.has(e.to));
+    if (next) walkBranch(next.to, branch);
+  }
+
+  function walk(id) {
+    if (!id || visited.has(id) || !nodeDefs.has(id)) return;
+    const bt = branchOf.get(id);
+    if (bt !== null && (inMap.get(id) || []).length > 1) return; // merge
+    visited.add(id);
+    orderedIds.push(id);
+
+    const outs = outMap.get(id) || [];
+    if (nodeDefs.get(id).shape === 'decision') {
+      const yE = outs.find(e => e.label.toLowerCase() === 'yes');
+      const nE = outs.find(e => e.label.toLowerCase() === 'no');
+      if (yE) walkBranch(yE.to, 'yes');
+      if (nE) walkBranch(nE.to, 'no');
+
+      // Find merge: first unvisited successor of any branch node just walked
+      let mergeId = null;
+      for (const vid of [...orderedIds].reverse()) {
+        if (branchOf.get(vid) !== 'yes' && branchOf.get(vid) !== 'no') break;
+        for (const e of outMap.get(vid) || []) {
+          if (!visited.has(e.to)) { mergeId = e.to; break; }
+        }
+        if (mergeId) break;
+      }
+      // Also check direct non-yes/no edges from decision
+      if (!mergeId) {
+        for (const e of outs) {
+          if (e.label.toLowerCase() !== 'yes' && e.label.toLowerCase() !== 'no' && !visited.has(e.to)) {
+            mergeId = e.to; break;
+          }
+        }
+      }
+      if (mergeId) walk(mergeId);
+    } else {
+      for (const e of outs) { if (!visited.has(e.to)) { walk(e.to); break; } }
+    }
+  }
+
+  // Start from root nodes (no incoming edges)
+  const roots = [...nodeDefs.keys()].filter(id => (inMap.get(id) || []).length === 0);
+  if (roots.length === 0) roots.push([...nodeDefs.keys()][0]);
+  roots.forEach(r => walk(r));
+  nodeDefs.forEach((_, id) => { if (!visited.has(id)) walk(id); });
+
+  // Determine start/end among stadium shapes
+  const stadiums = orderedIds.filter(id => nodeDefs.get(id).shape === 'stadium');
+
+  // Populate rows ────────────────────────────────────────────────────
+  stepsPanel.innerHTML = '';
+  orderedIds.forEach(id => {
+    const node = nodeDefs.get(id);
+    const bt   = branchOf.get(id);
+    let type;
+    if (node.shape === 'decision') {
+      type = 'decision';
+    } else if (node.shape === 'stadium') {
+      type = id === stadiums[0] ? 'start' : id === stadiums[stadiums.length - 1] ? 'end' : 'process';
+    } else {
+      type = bt || 'process';
+    }
+    const notes = notesMap[node.label] || notesMap[node.label.trim()] || [];
+    appendRow(node.label, type, notes, null);
+  });
+
+  refresh();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INIT — pre-load example
+// ═══════════════════════════════════════════════════════════
+[
+  ['Configure Paths',           'start',    ['Set SharePoint folder paths', 'Set app code location'], null],
+  ['Identify Confluence Pages', 'process',  [], null],
+  ['Run Confluence scripts',    'process',  ['Generates one .md per page'], null],
+  ['Scripts succeeded?',        'decision', [], null],
+  ['Run Jira Scripts',          'yes',      [], null],
+  ['Prepare Jira Filters',      'yes',      ['Filter for Bugs, Stories, Epics'], null],
+  ['Handle error',              'no',       ['Check logs for details'], null],
+  ['All done',                  'end',      [], null],
+].forEach(([label, type, notes]) => appendRow(label, type, notes));
+
+refresh();
+</script>
+</body>
+</html>

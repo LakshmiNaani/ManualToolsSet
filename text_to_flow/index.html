@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Text to Flow</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --color-bg: #f9fafb;
+  --color-surface: #ffffff;
+  --color-border: #e5e7eb;
+  --color-accent: #3b82f6;
+  --color-text: #111827;
+  --color-text-muted: #6b7280;
+  --radius: 8px;
+  --header-h: 50px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  color: var(--color-text);
+  background: var(--color-bg);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Header ── */
+header {
+  height: var(--header-h);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  gap: 8px;
+  flex-shrink: 0;
+}
+header h1 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-right: auto;
+  color: var(--color-text);
+}
+header h1 span {
+  font-weight: 400;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  margin-left: 6px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 11px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .12s, border-color .12s;
+}
+.btn:hover { background: var(--color-bg); border-color: #d1d5db; }
+.btn.accent { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
+.btn.accent:hover { background: #2563eb; border-color: #2563eb; }
+
+/* ── Main layout ── */
+main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* ── Left Panel ── */
+#left-panel {
+  width: 340px;
+  flex-shrink: 0;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#editor-label {
+  padding: 10px 14px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  flex-shrink: 0;
+}
+
+#editor {
+  flex: 1;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--color-text);
+  background: var(--color-surface);
+  padding: 6px 14px 12px;
+  tab-size: 2;
+}
+#editor::placeholder { color: #9ca3af; }
+
+/* ── Cheatsheet ── */
+#cheatsheet {
+  flex-shrink: 0;
+  border-top: 1px solid var(--color-border);
+  padding: 10px 14px;
+  background: #f9fafb;
+}
+#cheatsheet .cs-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--color-text-muted);
+  margin-bottom: 7px;
+}
+#cheatsheet .cs-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 3px;
+  font-size: 12px;
+}
+#cheatsheet .cs-row code {
+  font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
+  font-size: 11.5px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  padding: 1px 5px;
+  border-radius: 3px;
+  min-width: 110px;
+  display: inline-block;
+}
+#cheatsheet .cs-row span {
+  color: var(--color-text-muted);
+  font-size: 11.5px;
+}
+#cheatsheet .cs-note {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #9ca3af;
+  line-height: 1.5;
+}
+
+/* ── Right Panel ── */
+#right-panel {
+  flex: 1;
+  overflow: auto;
+  background:
+    radial-gradient(circle, #d1d5db 1px, transparent 1px) 0 0 / 22px 22px;
+  background-color: var(--color-bg);
+}
+
+#diagram-svg {
+  display: block;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Text to Flow <span>type in the left pane → diagram appears</span></h1>
+  <button class="btn accent" onclick="exportPNG()">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.7">
+      <rect x="1" y="1" width="11" height="11" rx="2"/>
+      <line x1="6.5" y1="9" x2="6.5" y2="4"/><polyline points="4,7 6.5,9 9,7"/>
+    </svg>
+    Export PNG
+  </button>
+  <button class="btn" onclick="exportMD()">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.7">
+      <rect x="1" y="1" width="11" height="11" rx="2"/>
+      <line x1="4" y1="4" x2="4" y2="9"/><line x1="9" y1="4" x2="9" y2="9"/>
+      <polyline points="4,6.5 6.5,4 9,6.5"/>
+    </svg>
+    Export MD
+  </button>
+  <button class="btn" onclick="clearAll()">Clear</button>
+</header>
+
+<main>
+  <!-- ── Left Panel ── -->
+  <aside id="left-panel">
+    <div id="editor-label">Flow Description</div>
+    <textarea id="editor" spellcheck="false"
+      placeholder="Start typing your process...&#10;&#10;Step one&#10;Step two&#10;? Decision point?&#10;  Yes branch step&#10;  no: No branch step&#10;Final step :end"></textarea>
+
+    <div id="cheatsheet">
+      <div class="cs-title">Syntax Quick Reference</div>
+      <div class="cs-row"><code>plain text</code><span>→ process box</span></div>
+      <div class="cs-row"><code>text :start</code><span>→ start oval (green)</span></div>
+      <div class="cs-row"><code>text :end</code><span>→ end oval (gray)</span></div>
+      <div class="cs-row"><code>? Question?</code><span>→ decision diamond</span></div>
+      <div class="cs-row"><code>&nbsp;&nbsp;yes step</code><span>→ yes branch (indent)</span></div>
+      <div class="cs-row"><code>&nbsp;&nbsp;no: step</code><span>→ no branch (indent)</span></div>
+      <div class="cs-row"><code>// comment</code><span>→ ignored</span></div>
+      <div class="cs-note">Indent with 2+ spaces. First &amp; last lines auto-get start/end shape if no :start/:end used.</div>
+    </div>
+  </aside>
+
+  <!-- ── Right Panel ── -->
+  <section id="right-panel">
+    <svg id="diagram-svg" width="2000" height="1500" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr-end" markerWidth="10" markerHeight="7"
+                refX="9" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
+          <polygon points="0 0,10 3.5,0 7" fill="#6b7280"/>
+        </marker>
+      </defs>
+      <rect id="svg-bg" x="0" y="0" width="2000" height="1500" fill="white"/>
+      <g id="edges-layer"></g>
+      <g id="nodes-layer"></g>
+    </svg>
+  </section>
+</main>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════════════════════
+const CX        = 600;   // main flow center X
+const BRANCH_DX = 250;   // horizontal distance from center for branches
+const LEVEL_H   = 145;   // vertical spacing per level
+const YPAD      = 90;    // top padding
+
+// ═══════════════════════════════════════════════════════════
+//  DOM REFERENCES
+// ═══════════════════════════════════════════════════════════
+const editor     = document.getElementById('editor');
+const svg        = document.getElementById('diagram-svg');
+const edgesLayer = document.getElementById('edges-layer');
+const nodesLayer = document.getElementById('nodes-layer');
+
+// ═══════════════════════════════════════════════════════════
+//  UTILITIES
+// ═══════════════════════════════════════════════════════════
+const NS = 'http://www.w3.org/2000/svg';
+function svgEl(tag) { return document.createElementNS(NS, tag); }
+
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+function wrapText(text, maxChars) {
+  if (!text) return [''];
+  const mc = Math.max(6, maxChars || 18);
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines = []; let cur = '';
+  for (const word of words) {
+    const test = cur ? cur + ' ' + word : word;
+    if (test.length <= mc) { cur = test; }
+    else {
+      if (cur) lines.push(cur);
+      cur = word.length > mc ? word.slice(0, mc - 1) + '…' : word;
+      if (lines.length >= 2) { lines.push(cur); cur = ''; break; }
+    }
+  }
+  if (cur) lines.push(cur);
+  return lines.length ? lines : [''];
+}
+
+function dlBlob(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function inlineStyles(srcSvg, destSvg) {
+  const se = srcSvg.querySelectorAll('*');
+  const de = destSvg.querySelectorAll('*');
+  const props = ['fill','stroke','stroke-width','stroke-dasharray','font-size','font-weight',
+                 'font-family','opacity','display','text-anchor','dominant-baseline'];
+  se.forEach((el, i) => {
+    const dest = de[i]; if (!dest) return;
+    const cs = getComputedStyle(el);
+    props.forEach(p => {
+      const v = cs.getPropertyValue(p);
+      if (v && v !== '') {
+        const js = p.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+        try { dest.style[js] = v; } catch(e) {}
+      }
+    });
+    ['fill','stroke','stroke-width','opacity'].forEach(a => {
+      if (el.hasAttribute(a)) dest.setAttribute(a, el.getAttribute(a));
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PARSE TEXT → GRAPH
+// ═══════════════════════════════════════════════════════════
+function parseText(raw) {
+  const nodes = new Map(); // id → {id, label, type, branch}
+  const edges = [];        // {from, to, label, style}
+  let nid = 0;
+  const mkId = () => 'n' + nid++;
+
+  // ── Step 1: classify each line ──────────────────────────
+  const classified = [];
+  for (const rawLine of raw.split('\n')) {
+    // Measure indent (tabs count as 2)
+    const indentStr = rawLine.match(/^(\s*)/)[1];
+    const indent = indentStr.replace(/\t/g, '  ').length;
+    const trimmed = rawLine.trim();
+
+    if (!trimmed || trimmed.startsWith('//')) continue;
+
+    let label = trimmed;
+    let isNo = false;
+
+    // no: prefix (only matters when indented under a ?)
+    const noMatch = label.match(/^no:\s+/i);
+    if (noMatch) { isNo = true; label = label.slice(noMatch[0].length).trim(); }
+
+    // :start / :end shape markers (at end of label)
+    let type = 'process';
+    if (/\s+:start\s*$/i.test(label)) {
+      type = 'start';
+      label = label.replace(/\s+:start\s*$/i, '').trim();
+    } else if (/\s+:end\s*$/i.test(label)) {
+      type = 'end';
+      label = label.replace(/\s+:end\s*$/i, '').trim();
+    }
+
+    // ? prefix → decision diamond
+    if (!isNo && /^\?/.test(trimmed)) {
+      type = 'decision';
+      label = trimmed.replace(/^\?\s*/, '').replace(/\?+$/, '').trim();
+      if (label && !label.endsWith('?')) label += '?';
+    }
+
+    classified.push({ indent, type, label, isNo });
+  }
+
+  if (classified.length === 0) return { nodes, edges };
+
+  // ── Step 2: auto start/end on first/last top-level nodes ──
+  const topLevel = classified.filter(c => c.indent === 0 && !c.isNo);
+  if (topLevel.length > 0) {
+    if (!classified.some(c => c.type === 'start')) {
+      const first = topLevel[0];
+      if (first.type === 'process') first.type = 'start';
+    }
+    if (!classified.some(c => c.type === 'end')) {
+      const last = topLevel[topLevel.length - 1];
+      if (last.type === 'process') last.type = 'end';
+    }
+  }
+
+  // ── Step 3: build graph ─────────────────────────────────
+  // prevIds: [{id, edgeLabel, style}] — open path ends awaiting next main node
+  let prevIds = [];
+  let i = 0;
+
+  while (i < classified.length) {
+    const cl = classified[i];
+
+    // Indented lines at top-level scan are skipped (consumed inside decision blocks)
+    if (cl.indent > 0) { i++; continue; }
+
+    const id = mkId();
+    nodes.set(id, { id, label: cl.label, type: cl.type, branch: null });
+
+    // Connect all pending path ends to this new node
+    for (const prev of prevIds) {
+      edges.push({ from: prev.id, to: id, label: prev.edgeLabel || '', style: prev.style || 'main' });
+    }
+    prevIds = [];
+
+    if (cl.type === 'decision') {
+      // Collect the indented block that follows
+      const blockStart = i + 1;
+      let j = blockStart;
+      while (j < classified.length && classified[j].indent > 0) j++;
+      const branchLines = classified.slice(blockStart, j);
+      i = j;
+
+      // YES branch: non-no: lines
+      const yesLines = branchLines.filter(l => !l.isNo);
+      // NO branch: no: lines
+      const noLines  = branchLines.filter(l => l.isNo);
+
+      // Build YES sequence
+      let yesLastId = null;
+      for (let k = 0; k < yesLines.length; k++) {
+        const yl = yesLines[k];
+        const yid = mkId();
+        nodes.set(yid, { id: yid, label: yl.label, type: yl.type, branch: 'yes' });
+        if (k === 0) edges.push({ from: id, to: yid, label: 'yes', style: 'yes' });
+        else         edges.push({ from: yesLastId, to: yid, label: '', style: 'yes' });
+        yesLastId = yid;
+      }
+
+      // Build NO sequence
+      let noLastId = null;
+      for (let k = 0; k < noLines.length; k++) {
+        const nl = noLines[k];
+        const noid = mkId();
+        nodes.set(noid, { id: noid, label: nl.label, type: nl.type, branch: 'no' });
+        if (k === 0) edges.push({ from: id, to: noid, label: 'no', style: 'no' });
+        else         edges.push({ from: noLastId, to: noid, label: '', style: 'no' });
+        noLastId = noid;
+      }
+
+      // Register path ends (branch last nodes → merge into next main node)
+      if (yesLastId) prevIds.push({ id: yesLastId, edgeLabel: '', style: 'yes' });
+      else            prevIds.push({ id, edgeLabel: 'yes', style: 'yes' });
+
+      if (noLastId)  prevIds.push({ id: noLastId, edgeLabel: '', style: 'no' });
+      else            prevIds.push({ id, edgeLabel: 'no', style: 'no' });
+
+    } else {
+      prevIds = [{ id, edgeLabel: '', style: 'main' }];
+      i++;
+    }
+  }
+
+  return { nodes, edges };
+}
+
+// ═══════════════════════════════════════════════════════════
+//  LAYOUT → POSITIONS
+// ═══════════════════════════════════════════════════════════
+function layout(nodes, edges) {
+  const positions = new Map();
+  if (nodes.size === 0) return positions;
+
+  // Assign levels: for each node, level = max(predecessor levels) + 1
+  const levels = new Map();
+  nodes.forEach((_, id) => levels.set(id, -1));
+
+  // Roots have no incoming edges
+  const hasIncoming = new Set(edges.map(e => e.to));
+  nodes.forEach((_, id) => { if (!hasIncoming.has(id)) levels.set(id, 0); });
+
+  // Relaxation (handles merge nodes that need max-of-predecessors level)
+  let changed = true;
+  for (let pass = 0; pass < nodes.size + 2 && changed; pass++) {
+    changed = false;
+    edges.forEach(e => {
+      const fl = levels.get(e.from);
+      if (fl === undefined || fl < 0) return;
+      const want = fl + 1;
+      if (want > (levels.get(e.to) ?? -1)) {
+        levels.set(e.to, want);
+        changed = true;
+      }
+    });
+  }
+
+  // Node dimensions by type
+  const dims = {
+    process:  { w: 152, h: 46 },
+    start:    { w: 144, h: 42 },
+    end:      { w: 144, h: 42 },
+    decision: { w: 160, h: 64 },
+  };
+
+  nodes.forEach((node, id) => {
+    const level = Math.max(0, levels.get(id) || 0);
+    const y = YPAD + level * LEVEL_H;
+    let x = CX;
+    if (node.branch === 'yes') x = CX + BRANCH_DX;
+    else if (node.branch === 'no') x = CX - BRANCH_DX;
+    const { w, h } = dims[node.type] || dims.process;
+    positions.set(id, { x, y, w, h });
+  });
+
+  return positions;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════════
+function render(nodes, edges, positions) {
+  edgesLayer.innerHTML = '';
+  nodesLayer.innerHTML = '';
+  if (nodes.size === 0) return;
+
+  // ── Draw edges ─────────────────────────────────────────
+  edges.forEach(edge => {
+    const fp = positions.get(edge.from);
+    const tp = positions.get(edge.to);
+    const fn = nodes.get(edge.from);
+    if (!fp || !tp) return;
+
+    // Exit point from source node
+    let x1, y1;
+    if (fn.type === 'decision') {
+      if (edge.style === 'yes')     { x1 = fp.x + fp.w / 2; y1 = fp.y; }        // right vertex
+      else if (edge.style === 'no') { x1 = fp.x - fp.w / 2; y1 = fp.y; }        // left vertex
+      else                          { x1 = fp.x;             y1 = fp.y + fp.h / 2; } // bottom vertex
+    } else {
+      x1 = fp.x; y1 = fp.y + fp.h / 2;  // bottom center
+    }
+
+    // Entry point into target node (top center / top vertex)
+    const x2 = tp.x;
+    const y2 = tp.y - tp.h / 2;
+
+    // Path: straight if same column, bezier curve otherwise
+    let d;
+    if (Math.abs(x1 - x2) < 4) {
+      d = `M${x1},${y1} L${x2},${y2}`;
+    } else {
+      // Cubic bezier — control points anchor vertically near source and target
+      const dy = Math.abs(y2 - y1);
+      const pull = Math.max(50, dy * 0.45);
+      d = `M${x1},${y1} C${x1},${y1 + pull} ${x2},${y2 - pull} ${x2},${y2}`;
+    }
+
+    const path = svgEl('path');
+    path.setAttribute('d', d);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', edge.style === 'yes' ? '#059669' : edge.style === 'no' ? '#dc2626' : '#6b7280');
+    path.setAttribute('stroke-width', '1.6');
+    path.setAttribute('marker-end', 'url(#arr-end)');
+    if (edge.style === 'yes' || edge.style === 'no') path.setAttribute('stroke-dasharray', '');
+    edgesLayer.appendChild(path);
+
+    // Edge label (yes / no)
+    if (edge.label) {
+      const lx = x1 + (x2 - x1) * 0.28;
+      const ly = y1 + (y2 - y1) * 0.28;
+
+      const bg = svgEl('rect');
+      bg.setAttribute('x', lx - 14); bg.setAttribute('y', ly - 9);
+      bg.setAttribute('width', '28'); bg.setAttribute('height', '17');
+      bg.setAttribute('fill', 'white'); bg.setAttribute('rx', '4');
+      edgesLayer.appendChild(bg);
+
+      const txt = svgEl('text');
+      txt.setAttribute('x', lx);
+      txt.setAttribute('y', ly + 1);
+      txt.setAttribute('text-anchor', 'middle');
+      txt.setAttribute('dominant-baseline', 'middle');
+      txt.setAttribute('font-size', '11');
+      txt.setAttribute('font-family', 'system-ui, -apple-system, sans-serif');
+      txt.setAttribute('font-weight', '700');
+      txt.setAttribute('fill', edge.style === 'yes' ? '#059669' : '#dc2626');
+      txt.textContent = edge.label;
+      edgesLayer.appendChild(txt);
+    }
+  });
+
+  // ── Draw nodes ─────────────────────────────────────────
+  nodes.forEach((node, id) => {
+    const pos = positions.get(id);
+    if (!pos) return;
+
+    const g = svgEl('g');
+    g.setAttribute('transform', `translate(${pos.x},${pos.y})`);
+
+    const hw = pos.w / 2, hh = pos.h / 2;
+
+    // Shape
+    if (node.type === 'decision') {
+      const poly = svgEl('polygon');
+      poly.setAttribute('points', `0,${-hh} ${hw},0 0,${hh} ${-hw},0`);
+      poly.setAttribute('fill', '#fef3c7');
+      poly.setAttribute('stroke', '#d97706');
+      poly.setAttribute('stroke-width', '2');
+      g.appendChild(poly);
+    } else if (node.type === 'start') {
+      const el = svgEl('ellipse');
+      el.setAttribute('rx', hw); el.setAttribute('ry', hh);
+      el.setAttribute('fill', '#d1fae5'); el.setAttribute('stroke', '#059669');
+      el.setAttribute('stroke-width', '2');
+      g.appendChild(el);
+    } else if (node.type === 'end') {
+      const el = svgEl('ellipse');
+      el.setAttribute('rx', hw); el.setAttribute('ry', hh);
+      el.setAttribute('fill', '#f3f4f6'); el.setAttribute('stroke', '#6b7280');
+      el.setAttribute('stroke-width', '2.5');
+      g.appendChild(el);
+      // Double ring for "end" terminal
+      const el2 = svgEl('ellipse');
+      el2.setAttribute('rx', hw - 5); el2.setAttribute('ry', hh - 5);
+      el2.setAttribute('fill', 'none'); el2.setAttribute('stroke', '#6b7280');
+      el2.setAttribute('stroke-width', '1.2');
+      g.appendChild(el2);
+    } else {
+      const rect = svgEl('rect');
+      rect.setAttribute('x', -hw); rect.setAttribute('y', -hh);
+      rect.setAttribute('width', pos.w); rect.setAttribute('height', pos.h);
+      rect.setAttribute('rx', '7');
+      rect.setAttribute('fill', '#dbeafe'); rect.setAttribute('stroke', '#2563eb');
+      rect.setAttribute('stroke-width', '2');
+      g.appendChild(rect);
+    }
+
+    // Label text
+    const lines = wrapText(node.label, 18);
+    const lineH = 15;
+    const txt = svgEl('text');
+    txt.setAttribute('text-anchor', 'middle');
+    txt.setAttribute('dominant-baseline', 'central');
+    txt.setAttribute('font-size', '12');
+    txt.setAttribute('font-family', 'system-ui, -apple-system, sans-serif');
+    txt.setAttribute('fill', '#111827');
+    txt.setAttribute('font-weight', '500');
+
+    if (lines.length === 1) {
+      txt.textContent = lines[0];
+    } else {
+      const startDy = -((lines.length - 1) * lineH) / 2;
+      lines.forEach((line, k) => {
+        const ts = svgEl('tspan');
+        ts.setAttribute('x', '0');
+        ts.setAttribute('dy', k === 0 ? startDy : lineH);
+        ts.textContent = line;
+        txt.appendChild(ts);
+      });
+    }
+    g.appendChild(txt);
+    nodesLayer.appendChild(g);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  REFRESH (parse + layout + render)
+// ═══════════════════════════════════════════════════════════
+function refresh() {
+  const { nodes, edges } = parseText(editor.value);
+  const positions = layout(nodes, edges);
+  render(nodes, edges, positions);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  EXPORT PNG
+// ═══════════════════════════════════════════════════════════
+function exportPNG() {
+  if (nodesLayer.children.length === 0) { alert('Nothing to export yet — type something first.'); return; }
+
+  // Compute tight bounding box of the diagram
+  const bb = nodesLayer.getBBox();
+  const pad = 50;
+  const vx = bb.x - pad, vy = bb.y - pad;
+  const vw = bb.width + pad * 2, vh = bb.height + pad * 2;
+
+  // Clone and adjust
+  const clone = svg.cloneNode(true);
+  clone.setAttribute('viewBox', `${vx} ${vy} ${vw} ${vh}`);
+  clone.setAttribute('width',  vw * 2);
+  clone.setAttribute('height', vh * 2);
+  const bgRect = clone.querySelector('#svg-bg');
+  if (bgRect) {
+    bgRect.setAttribute('x', vx); bgRect.setAttribute('y', vy);
+    bgRect.setAttribute('width', vw); bgRect.setAttribute('height', vh);
+  }
+
+  inlineStyles(svg, clone);
+
+  const ser = new XMLSerializer().serializeToString(clone);
+  const blob = new Blob([ser], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = vw * 2; canvas.height = vh * 2;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0);
+    URL.revokeObjectURL(url);
+    canvas.toBlob(b => dlBlob(b, 'flow.png'), 'image/png');
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); alert('PNG export failed. Try Chrome or Edge.'); };
+  img.src = url;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  EXPORT MD
+// ═══════════════════════════════════════════════════════════
+function exportMD() {
+  const { nodes, edges } = parseText(editor.value);
+  if (nodes.size === 0) { alert('Nothing to export yet.'); return; }
+
+  const mLines = ['flowchart TD'];
+  nodes.forEach((node, id) => {
+    const lbl = node.label.replace(/"/g, "'");
+    if (node.type === 'start' || node.type === 'end') mLines.push(`  ${id}([${lbl}])`);
+    else if (node.type === 'decision') mLines.push(`  ${id}{${lbl}}`);
+    else mLines.push(`  ${id}[${lbl}]`);
+  });
+  edges.forEach(e => {
+    const arrow = e.label ? ('-->|' + e.label + '|') : '-->';
+    mLines.push(`  ${e.from} ${arrow} ${e.to}`);
+  });
+
+  const md = [
+    '# Flow Diagram',
+    '',
+    '## Diagram',
+    '',
+    '```mermaid',
+    mLines.join('\n'),
+    '```',
+    '',
+    '## Source Text',
+    '',
+    '```',
+    editor.value,
+    '```',
+  ].join('\n');
+
+  dlBlob(new Blob([md], { type: 'text/markdown' }), 'flow.md');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CLEAR
+// ═══════════════════════════════════════════════════════════
+function clearAll() {
+  editor.value = '';
+  edgesLayer.innerHTML = '';
+  nodesLayer.innerHTML = '';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  KEYBOARD SHORTCUT: Tab inserts 2 spaces in editor
+// ═══════════════════════════════════════════════════════════
+editor.addEventListener('keydown', e => {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const s = editor.selectionStart, end = editor.selectionEnd;
+    editor.value = editor.value.slice(0, s) + '  ' + editor.value.slice(end);
+    editor.selectionStart = editor.selectionEnd = s + 2;
+    refresh();
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
+const EXAMPLE =
+`Configure Paths :start
+Identify Confluence Pages
+Run Confluence scripts
+? Scripts succeeded?
+  Run Jira Scripts
+  Prepare Jira Filters
+  no: Handle error :end
+All done :end`;
+
+editor.value = EXAMPLE;
+editor.addEventListener('input', debounce(refresh, 180));
+refresh();
+</script>
+</body>
+</html>
