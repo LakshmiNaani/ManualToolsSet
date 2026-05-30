@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tools Hub</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body { height: 100%; overflow: hidden; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; }
+
+    #app { display: flex; height: 100vh; }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: 210px;
+      min-width: 210px;
+      background: #161b22;
+      color: #c9d1d9;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid #30363d;
+      transition: width 0.2s ease, min-width 0.2s ease;
+      overflow: hidden;
+    }
+
+    #sidebar.collapsed { width: 46px; min-width: 46px; }
+
+    /* header */
+    #sidebar-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 8px;
+      border-bottom: 1px solid #30363d;
+      flex-shrink: 0;
+    }
+
+    #toggle-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #8b949e;
+      padding: 5px;
+      border-radius: 5px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+    #toggle-btn:hover { background: #30363d; color: #e6edf3; }
+
+    #sidebar-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #e6edf3;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+      overflow: hidden;
+      opacity: 1;
+      transition: opacity 0.12s ease;
+    }
+    #sidebar.collapsed #sidebar-title { opacity: 0; width: 0; }
+
+    /* nav */
+    #nav { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 6px 0 16px; }
+    #nav::-webkit-scrollbar { width: 3px; }
+    #nav::-webkit-scrollbar-track { background: transparent; }
+    #nav::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
+
+    .group-label {
+      font-size: 9.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #484f58;
+      padding: 14px 12px 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      transition: opacity 0.12s ease;
+    }
+    #sidebar.collapsed .group-label { opacity: 0; padding: 10px 0 0; height: 10px; }
+
+    .tool-btn {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      width: 100%;
+      padding: 7px 12px;
+      background: none;
+      border: none;
+      border-left: 2px solid transparent;
+      cursor: pointer;
+      color: #8b949e;
+      font-size: 12.5px;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      transition: background 0.12s, color 0.12s, border-color 0.12s;
+    }
+    .tool-btn:hover { background: #1c2128; color: #e6edf3; }
+    .tool-btn.active { background: #0d2137; color: #58a6ff; border-left-color: #388bfd; }
+
+    .tool-btn .icon {
+      flex-shrink: 0;
+      width: 18px;
+      text-align: center;
+      font-size: 14px;
+      line-height: 1;
+    }
+    .tool-btn .label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: opacity 0.12s ease;
+      flex: 1;
+    }
+    #sidebar.collapsed .tool-btn .label { opacity: 0; width: 0; }
+    #sidebar.collapsed .tool-btn { padding: 9px; justify-content: center; gap: 0; }
+
+    .tool-btn.sub-item .label { color: inherit; opacity: 0.85; }
+    .tool-btn.sub-item .icon { font-size: 11px; color: #484f58; }
+    .tool-btn.sub-item.active .icon { color: #388bfd; }
+
+    /* separator line before sub-groups */
+    .group-sep { height: 1px; background: #21262d; margin: 4px 10px; }
+    #sidebar.collapsed .group-sep { margin: 4px 4px; }
+
+    /* ── Content ── */
+    #content { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #0d1117; }
+
+    #tool-iframe { flex: 1; border: none; width: 100%; height: 100%; display: none; }
+
+    /* Empty state */
+    #empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      color: #484f58;
+      user-select: none;
+    }
+    #empty-state svg { opacity: 0.35; }
+    #empty-state h2 { font-size: 15px; font-weight: 500; color: #6e7681; }
+    #empty-state p { font-size: 12px; color: #484f58; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <aside id="sidebar">
+    <div id="sidebar-header">
+      <button id="toggle-btn" title="Toggle sidebar">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor">
+          <path fill-rule="evenodd" d="M1 2.75A.75.75 0 011.75 2h12.5a.75.75 0 010 1.5H1.75A.75.75 0 011 2.75zm0 5A.75.75 0 011.75 7h12.5a.75.75 0 010 1.5H1.75A.75.75 0 011 7.75zm0 5a.75.75 0 01.75-.75h12.5a.75.75 0 010 1.5H1.75a.75.75 0 01-.75-.75z"/>
+        </svg>
+      </button>
+      <span id="sidebar-title">Tools Hub</span>
+    </div>
+    <nav id="nav"></nav>
+  </aside>
+
+  <div id="content">
+    <div id="empty-state">
+      <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#58a6ff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1"/>
+        <rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/>
+        <rect x="14" y="14" width="7" height="7" rx="1"/>
+      </svg>
+      <h2>Pick a tool from the sidebar</h2>
+      <p>All your offline tools — one place, no navigation.</p>
+    </div>
+    <iframe id="tool-iframe" allowfullscreen></iframe>
+  </div>
+
+</div>
+<script>
+  const TOOLS = [
+    {
+      group: 'Builders',
+      items: [
+        { id: 'flow-builder',     label: 'Flow Builder',      icon: '⬡', path: 'flow_builder/index.html' },
+        { id: 'prompt-builder',   label: 'Prompt Builder',    icon: '✦', path: 'prompt_builder/index.html' },
+        { id: 'text-to-flow',     label: 'Text to Flow',      icon: '⇢', path: 'text_to_flow/index.html' },
+        { id: 'workflow-diagram', label: 'Workflow Diagram',   icon: '◈', path: 'workflow_diagram_builder/index.html' },
+      ],
+    },
+    {
+      group: 'Text & Markdown',
+      items: [
+        { id: 'text2md', label: 'Text → Markdown', icon: '✎', path: 'text2md/index.html' },
+        { id: 'md2html', label: 'MD2HTML Viewer',  icon: '⊞', path: 'md2html/output/index.html' },
+      ],
+    },
+    {
+      group: 'Workflow Builder',
+      items: [
+        { id: 'wf-template',   label: 'Template',      icon: '›', path: 'workflow_builder/template.html',            sub: true },
+        { id: 'wf-stage',      label: 'Stage Builder', icon: '›', path: 'workflow_builder/stage_builder.html',       sub: true },
+        { id: 'wf-multistage', label: 'Multi-Stage',   icon: '›', path: 'workflow_builder/multi_stage_builder.html', sub: true },
+      ],
+    },
+  ];
+
+  const sidebar  = document.getElementById('sidebar');
+  const nav      = document.getElementById('nav');
+  const iframe   = document.getElementById('tool-iframe');
+  const empty    = document.getElementById('empty-state');
+  const toggleBtn = document.getElementById('toggle-btn');
+
+  // Build sidebar nav
+  TOOLS.forEach(group => {
+    const groupEl = document.createElement('div');
+    groupEl.className = 'group-label';
+    groupEl.textContent = group.group;
+    nav.appendChild(groupEl);
+
+    group.items.forEach(tool => {
+      const btn = document.createElement('button');
+      btn.className = 'tool-btn' + (tool.sub ? ' sub-item' : '');
+      btn.dataset.id = tool.id;
+      btn.title = tool.label;
+      btn.innerHTML = `<span class="icon">${tool.icon}</span><span class="label">${tool.label}</span>`;
+      btn.addEventListener('click', () => activate(tool));
+      nav.appendChild(btn);
+    });
+  });
+
+  function activate(tool) {
+    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector(`[data-id="${tool.id}"]`).classList.add('active');
+
+    empty.style.display = 'none';
+    iframe.style.display = 'block';
+
+    // Only reload if switching to a different tool
+    if (iframe.dataset.current !== tool.id) {
+      iframe.src = tool.path;
+      iframe.dataset.current = tool.id;
+    }
+
+    localStorage.setItem('hub:tool', tool.id);
+  }
+
+  // Restore last-used tool
+  const lastId = localStorage.getItem('hub:tool');
+  if (lastId) {
+    const all = TOOLS.flatMap(g => g.items);
+    const saved = all.find(t => t.id === lastId);
+    if (saved) activate(saved);
+  }
+
+  // Sidebar collapse toggle
+  toggleBtn.addEventListener('click', () => {
+    const collapsed = sidebar.classList.toggle('collapsed');
+    localStorage.setItem('hub:sidebar', collapsed ? '1' : '0');
+  });
+
+  if (localStorage.getItem('hub:sidebar') === '1') sidebar.classList.add('collapsed');
+</script>
+</body>
+</html>
