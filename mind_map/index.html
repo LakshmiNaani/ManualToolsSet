@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mind Map</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; }
+
+    /* ── Toolbar ── */
+    #toolbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 20;
+      height: 52px;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      display: flex; align-items: center; gap: 6px; padding: 0 14px;
+    }
+
+    #toolbar h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.02em; margin-right: 8px; color: #f1f5f9; }
+
+    .tb-btn {
+      padding: 6px 13px; font-size: 12px; font-weight: 500; border-radius: 5px;
+      border: none; cursor: pointer; transition: background 0.12s, color 0.12s;
+    }
+    .tb-btn-primary { background: #3b82f6; color: #fff; }
+    .tb-btn-primary:hover { background: #2563eb; }
+    .tb-btn-secondary { background: #334155; color: #94a3b8; }
+    .tb-btn-secondary:hover { background: #475569; color: #f1f5f9; }
+    .tb-btn-danger { background: #7f1d1d; color: #fca5a5; }
+    .tb-btn-danger:hover { background: #991b1b; color: #fecaca; }
+
+    .tb-sep { width: 1px; height: 24px; background: #334155; margin: 0 4px; }
+
+    #hint {
+      margin-left: auto; font-size: 11px; color: #64748b;
+      display: flex; gap: 12px;
+    }
+    .hint-item { display: flex; align-items: center; gap: 4px; }
+    .hint-key {
+      background: #334155; color: #94a3b8; border-radius: 3px;
+      padding: 1px 5px; font-size: 10px; font-weight: 600;
+    }
+
+    /* ── Canvas ── */
+    #canvas-wrap {
+      position: fixed; top: 52px; left: 0; right: 0; bottom: 0;
+    }
+    #canvas { display: block; width: 100%; height: 100%; cursor: default; }
+    #canvas.mode-connect { cursor: crosshair; }
+
+    /* ── In-place node editor ── */
+    #node-editor {
+      position: fixed; display: none;
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 13px; font-weight: 600;
+      padding: 0 8px;
+      border: 2px solid #60a5fa; border-radius: 5px;
+      background: #1e293b; color: #f1f5f9;
+      outline: none; text-align: center;
+      height: 36px; min-width: 80px;
+    }
+
+    /* ── Color picker row ── */
+    #color-picker { display: none; align-items: center; gap: 4px; }
+    .color-dot {
+      width: 18px; height: 18px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;
+      transition: border-color 0.12s, transform 0.12s;
+    }
+    .color-dot:hover, .color-dot.selected { border-color: #fff; transform: scale(1.2); }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(12px);
+      background: #1e293b; color: #f1f5f9; border: 1px solid #334155;
+      padding: 8px 16px; border-radius: 8px;
+      font-size: 12px; font-weight: 500;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.18s, transform 0.18s; z-index: 100;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<div id="toolbar">
+  <h1>◉ Mind Map</h1>
+  <button class="tb-btn tb-btn-primary" id="btn-add">+ Node</button>
+  <div id="color-picker">
+    <div class="color-dot" data-color="#3b82f6" style="background:#3b82f6" title="Blue"></div>
+    <div class="color-dot" data-color="#16a34a" style="background:#16a34a" title="Green"></div>
+    <div class="color-dot" data-color="#9333ea" style="background:#9333ea" title="Purple"></div>
+    <div class="color-dot" data-color="#ea580c" style="background:#ea580c" title="Orange"></div>
+    <div class="color-dot" data-color="#db2777" style="background:#db2777" title="Pink"></div>
+    <div class="color-dot" data-color="#0e7490" style="background:#0e7490" title="Teal"></div>
+  </div>
+  <div class="tb-sep"></div>
+  <button class="tb-btn tb-btn-secondary" id="btn-import">Import JSON</button>
+  <button class="tb-btn tb-btn-secondary" id="btn-save-json">Save JSON</button>
+  <button class="tb-btn tb-btn-secondary" id="btn-export">Export PNG</button>
+  <button class="tb-btn tb-btn-danger" id="btn-clear">Clear</button>
+  <div id="hint">
+    <span class="hint-item"><span class="hint-key">Dbl-click</span> add/edit node</span>
+    <span class="hint-item"><span class="hint-key">Drag</span> move node</span>
+    <span class="hint-item"><span class="hint-key">Shift+drag</span> connect nodes</span>
+    <span class="hint-item"><span class="hint-key">Del</span> delete selected</span>
+  </div>
+</div>
+
+<div id="canvas-wrap">
+  <canvas id="canvas"></canvas>
+</div>
+<input id="node-editor" type="text" maxlength="80">
+<input type="file" id="file-import" accept=".json" style="display:none">
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+// ── Constants ──────────────────────────────────────────────────────────────
+
+const COLORS = ['#3b82f6', '#16a34a', '#9333ea', '#ea580c', '#db2777', '#0e7490'];
+const NODE_H = 38;
+const STORAGE_KEY = 'mind_map_v1';
+
+// ── Canvas setup ───────────────────────────────────────────────────────────
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let dpr = window.devicePixelRatio || 1;
+
+function resizeCanvas() {
+  dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  ctx.scale(dpr, dpr);
+  draw();
+}
+
+window.addEventListener('resize', resizeCanvas);
+
+// ── State ──────────────────────────────────────────────────────────────────
+
+let state = loadState();
+
+function defaultState() { return { nodes: [], edges: [] }; }
+
+function loadState() {
+  try { const r = localStorage.getItem(STORAGE_KEY); if (r) return JSON.parse(r); } catch (_) {}
+  return defaultState();
+}
+function saveState() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (_) {}
+}
+
+function uid() { return Math.random().toString(36).slice(2, 9); }
+function nodeById(id) { return state.nodes.find(n => n.id === id); }
+
+// ── Interaction state ──────────────────────────────────────────────────────
+
+let selectedNode = null;
+let selectedEdge = null;
+let hoverNode = null;
+let drag = null;
+// drag = { type:'node', node, ox, oy, mx, my }
+// drag = { type:'connect', fromNode, cx, cy }
+let editingNode = null;
+
+// ── Geometry ───────────────────────────────────────────────────────────────
+
+function getNodeWidth(text) {
+  ctx.save();
+  ctx.font = 'bold 13px system-ui, -apple-system, sans-serif';
+  const w = Math.max(80, ctx.measureText(text || 'Node').width + 40);
+  ctx.restore();
+  return w;
+}
+
+function nodeBounds(node) {
+  const w = getNodeWidth(node.text);
+  return { x: node.x - w / 2, y: node.y - NODE_H / 2, w, h: NODE_H };
+}
+
+function hitNode(x, y) {
+  for (let i = state.nodes.length - 1; i >= 0; i--) {
+    const n = state.nodes[i];
+    const b = nodeBounds(n);
+    if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return n;
+  }
+  return null;
+}
+
+function distToSegment(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay;
+  const l2 = dx * dx + dy * dy;
+  if (l2 === 0) return Math.hypot(px - ax, py - ay);
+  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l2));
+  return Math.hypot(px - ax - t * dx, py - ay - t * dy);
+}
+
+function hitEdge(x, y) {
+  for (let i = state.edges.length - 1; i >= 0; i--) {
+    const e = state.edges[i];
+    const f = nodeById(e.from), t = nodeById(e.to);
+    if (f && t && distToSegment(x, y, f.x, f.y, t.x, t.y) < 9) return e;
+  }
+  return null;
+}
+
+function canvasPos(e) {
+  const r = canvas.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+
+function edgeBoundaryPoints(from, to) {
+  const fw = getNodeWidth(from.text), tw = getNodeWidth(to.text);
+  const dx = to.x - from.x, dy = to.y - from.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist === 0) return { x1: from.x, y1: from.y, x2: to.x, y2: to.y };
+  const ux = dx / dist, uy = dy / dist;
+  // Approximate exit point on node rectangle
+  const fhw = fw / 2, fhh = NODE_H / 2;
+  const thw = tw / 2, thh = NODE_H / 2;
+  const ft = Math.min(fhw / Math.max(Math.abs(ux), 1e-9), fhh / Math.max(Math.abs(uy), 1e-9));
+  const tt = Math.min(thw / Math.max(Math.abs(ux), 1e-9), thh / Math.max(Math.abs(uy), 1e-9));
+  return {
+    x1: from.x + ux * Math.min(ft, dist / 2),
+    y1: from.y + uy * Math.min(ft, dist / 2),
+    x2: to.x - ux * Math.min(tt, dist / 2),
+    y2: to.y - uy * Math.min(tt, dist / 2),
+  };
+}
+
+// ── Draw ───────────────────────────────────────────────────────────────────
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function drawArrowhead(x1, y1, x2, y2, color) {
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  const len = 11;
+  const spread = 0.42;
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - len * Math.cos(angle - spread), y2 - len * Math.sin(angle - spread));
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - len * Math.cos(angle + spread), y2 - len * Math.sin(angle + spread));
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.8;
+  ctx.stroke();
+}
+
+function drawEdge(edge, selected) {
+  const from = nodeById(edge.from), to = nodeById(edge.to);
+  if (!from || !to) return;
+  const { x1, y1, x2, y2 } = edgeBoundaryPoints(from, to);
+  const color = selected ? '#60a5fa' : '#475569';
+
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = selected ? 2.5 : 1.5;
+  ctx.setLineDash([]);
+  ctx.stroke();
+  drawArrowhead(x1, y1, x2, y2, color);
+}
+
+function drawNode(node, selected, hovered) {
+  const b = nodeBounds(node);
+  const isFirst = state.nodes[0] === node;
+
+  // Shadow
+  ctx.shadowColor = 'rgba(0,0,0,0.4)';
+  ctx.shadowBlur = selected ? 14 : 8;
+  ctx.shadowOffsetY = selected ? 3 : 2;
+
+  // Fill
+  ctx.fillStyle = node.color;
+  roundRect(b.x, b.y, b.w, b.h, 8);
+  ctx.fill();
+  ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+
+  // Hover / selection ring
+  if (selected || hovered) {
+    ctx.strokeStyle = selected ? '#f1f5f9' : 'rgba(255,255,255,0.4)';
+    ctx.lineWidth = selected ? 2.5 : 1.5;
+    ctx.setLineDash(selected ? [5, 3] : []);
+    roundRect(b.x - 3, b.y - 3, b.w + 6, b.h + 6, 11);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Text
+  if (editingNode !== node) {
+    ctx.fillStyle = '#fff';
+    ctx.font = (isFirst ? 'bold ' : '') + '13px system-ui, -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(node.text || 'Node', node.x, node.y);
+  }
+}
+
+function draw() {
+  const w = canvas.width / dpr, h = canvas.height / dpr;
+  ctx.clearRect(0, 0, w, h);
+
+  // Background grid dots
+  ctx.fillStyle = '#1e293b';
+  const step = 28;
+  for (let x = 0; x < w; x += step) {
+    for (let y = 0; y < h; y += step) {
+      ctx.beginPath();
+      ctx.arc(x, y, 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Edges
+  for (const edge of state.edges) {
+    drawEdge(edge, edge === selectedEdge);
+  }
+
+  // Connect preview
+  if (drag && drag.type === 'connect') {
+    ctx.beginPath();
+    ctx.moveTo(drag.fromNode.x, drag.fromNode.y);
+    ctx.lineTo(drag.cx, drag.cy);
+    ctx.strokeStyle = '#60a5fa';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Nodes
+  for (const node of state.nodes) {
+    drawNode(node, node === selectedNode, node === hoverNode);
+  }
+}
+
+// ── In-place editor ────────────────────────────────────────────────────────
+
+const nodeEditor = document.getElementById('node-editor');
+
+function showEditor(node) {
+  editingNode = node;
+  const r = canvas.getBoundingClientRect();
+  const b = nodeBounds(node);
+  nodeEditor.style.display = 'block';
+  nodeEditor.style.left = (r.left + b.x) + 'px';
+  nodeEditor.style.top = (r.top + b.y + 1) + 'px';
+  nodeEditor.style.width = b.w + 'px';
+  nodeEditor.style.height = (b.h - 2) + 'px';
+  nodeEditor.value = node.text;
+  nodeEditor.focus();
+  nodeEditor.select();
+  draw();
+}
+
+function commitEditor() {
+  if (!editingNode) return;
+  const text = nodeEditor.value.trim() || 'Node';
+  editingNode.text = text;
+  editingNode = null;
+  nodeEditor.style.display = 'none';
+  saveState();
+  draw();
+}
+
+nodeEditor.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); commitEditor(); }
+  if (e.key === 'Escape') {
+    if (!editingNode.text) state.nodes = state.nodes.filter(n => n !== editingNode);
+    editingNode = null;
+    nodeEditor.style.display = 'none';
+    saveState(); draw();
+  }
+});
+
+nodeEditor.addEventListener('blur', () => { commitEditor(); });
+
+// ── Mouse events ───────────────────────────────────────────────────────────
+
+canvas.addEventListener('mousedown', e => {
+  if (editingNode) { commitEditor(); return; }
+  const { x, y } = canvasPos(e);
+  const node = hitNode(x, y);
+
+  if (node) {
+    if (e.shiftKey) {
+      drag = { type: 'connect', fromNode: node, cx: x, cy: y };
+      canvas.classList.add('mode-connect');
+    } else {
+      selectedNode = node;
+      selectedEdge = null;
+      drag = { type: 'node', node, ox: x - node.x, oy: y - node.y };
+      showColorPicker(node);
+    }
+    draw();
+    return;
+  }
+
+  // Check edge
+  const edge = hitEdge(x, y);
+  if (edge) {
+    selectedEdge = edge;
+    selectedNode = null;
+    hideColorPicker();
+    draw();
+    return;
+  }
+
+  selectedNode = null;
+  selectedEdge = null;
+  hideColorPicker();
+  draw();
+});
+
+canvas.addEventListener('mousemove', e => {
+  const { x, y } = canvasPos(e);
+
+  if (drag) {
+    if (drag.type === 'node') {
+      drag.node.x = x - drag.ox;
+      drag.node.y = y - drag.oy;
+      repositionEditorIfOpen();
+      draw();
+    } else if (drag.type === 'connect') {
+      drag.cx = x; drag.cy = y;
+      draw();
+    }
+    return;
+  }
+
+  const node = hitNode(x, y);
+  if (node !== hoverNode) { hoverNode = node; draw(); }
+});
+
+canvas.addEventListener('mouseup', e => {
+  if (!drag) return;
+  const { x, y } = canvasPos(e);
+
+  if (drag.type === 'node') {
+    saveState();
+  } else if (drag.type === 'connect') {
+    const toNode = hitNode(x, y);
+    if (toNode && toNode !== drag.fromNode) {
+      const exists = state.edges.some(ed =>
+        (ed.from === drag.fromNode.id && ed.to === toNode.id) ||
+        (ed.from === toNode.id && ed.to === drag.fromNode.id)
+      );
+      if (!exists) {
+        state.edges.push({ id: uid(), from: drag.fromNode.id, to: toNode.id });
+        saveState();
+      }
+    }
+    canvas.classList.remove('mode-connect');
+  }
+
+  drag = null;
+  draw();
+});
+
+canvas.addEventListener('dblclick', e => {
+  if (editingNode) return;
+  const { x, y } = canvasPos(e);
+  const node = hitNode(x, y);
+
+  if (node) {
+    selectedNode = node;
+    showEditor(node);
+  } else {
+    const color = COLORS[state.nodes.length % COLORS.length];
+    const newNode = { id: uid(), x, y, text: 'Node', color };
+    state.nodes.push(newNode);
+    selectedNode = newNode;
+    selectedEdge = null;
+    draw();
+    showEditor(newNode);
+  }
+});
+
+canvas.addEventListener('mouseleave', () => {
+  hoverNode = null;
+  if (drag && drag.type === 'connect') { drag = null; canvas.classList.remove('mode-connect'); }
+  draw();
+});
+
+// ── Keyboard ───────────────────────────────────────────────────────────────
+
+document.addEventListener('keydown', e => {
+  if (editingNode || e.target === nodeEditor) return;
+
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (selectedNode) {
+      state.edges = state.edges.filter(ed => ed.from !== selectedNode.id && ed.to !== selectedNode.id);
+      state.nodes = state.nodes.filter(n => n !== selectedNode);
+      selectedNode = null;
+    } else if (selectedEdge) {
+      state.edges = state.edges.filter(ed => ed !== selectedEdge);
+      selectedEdge = null;
+    }
+    saveState(); draw();
+  }
+
+  if (e.key === 'Escape') { selectedNode = null; selectedEdge = null; hideColorPicker(); draw(); }
+});
+
+// ── Color picker ───────────────────────────────────────────────────────────
+
+const colorPicker = document.getElementById('color-picker');
+
+function showColorPicker(node) {
+  colorPicker.style.display = 'flex';
+  colorPicker.querySelectorAll('.color-dot').forEach(d => {
+    d.classList.toggle('selected', d.dataset.color === node.color);
+  });
+}
+
+function hideColorPicker() { colorPicker.style.display = 'none'; }
+
+colorPicker.addEventListener('click', e => {
+  const dot = e.target.closest('.color-dot');
+  if (!dot || !selectedNode) return;
+  selectedNode.color = dot.dataset.color;
+  colorPicker.querySelectorAll('.color-dot').forEach(d => d.classList.toggle('selected', d === dot));
+  saveState(); draw();
+});
+
+// ── Toolbar actions ────────────────────────────────────────────────────────
+
+document.getElementById('btn-add').addEventListener('click', () => {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  const color = COLORS[state.nodes.length % COLORS.length];
+  // Place near center, offset if many nodes exist
+  const cx = w / 2 + (Math.random() - 0.5) * 200;
+  const cy = h / 2 + (Math.random() - 0.5) * 150;
+  const newNode = { id: uid(), x: cx, y: cy, text: 'Node', color };
+  state.nodes.push(newNode);
+  selectedNode = newNode;
+  draw();
+  showEditor(newNode);
+  showColorPicker(newNode);
+});
+
+document.getElementById('btn-clear').addEventListener('click', () => {
+  if (!confirm('Clear the entire mind map?')) return;
+  state = defaultState();
+  selectedNode = null; selectedEdge = null;
+  hideColorPicker();
+  saveState(); draw();
+});
+
+document.getElementById('btn-save-json').addEventListener('click', () => {
+  commitEditor();
+  const json = JSON.stringify(state, null, 2);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+  a.download = 'mind-map.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Saved mind-map.json');
+});
+
+document.getElementById('btn-import').addEventListener('click', () => {
+  const fi = document.getElementById('file-import');
+  fi.value = '';
+  fi.click();
+});
+
+document.getElementById('file-import').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!data || !Array.isArray(data.nodes) || !Array.isArray(data.edges)) {
+        toast('Invalid mind map JSON'); return;
+      }
+      state = data;
+      selectedNode = null; selectedEdge = null;
+      hideColorPicker();
+      saveState(); draw();
+      toast('Imported ' + file.name);
+    } catch (_) {
+      toast('Could not read file — make sure it is a valid JSON');
+    }
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById('btn-export').addEventListener('click', () => {
+  commitEditor();
+  // Draw on a fresh canvas with white background
+  const exp = document.createElement('canvas');
+  const ew = canvas.width, eh = canvas.height;
+  exp.width = ew; exp.height = eh;
+  const ec = exp.getContext('2d');
+  ec.scale(dpr, dpr);
+  // White bg
+  ec.fillStyle = '#ffffff';
+  ec.fillRect(0, 0, ew / dpr, eh / dpr);
+  // Re-draw edges and nodes on ec
+  drawOn(ec, ew / dpr, eh / dpr);
+  const url = exp.toDataURL('image/png');
+  const a = document.createElement('a');
+  a.href = url; a.download = 'mind-map.png'; a.click();
+  toast('Exported mind-map.png');
+});
+
+function drawOn(tctx, w, h) {
+  const prev = { ctx };
+  // Draw all edges
+  for (const edge of state.edges) {
+    const from = nodeById(edge.from), to = nodeById(edge.to);
+    if (!from || !to) continue;
+    const { x1, y1, x2, y2 } = edgeBoundaryPoints(from, to);
+    tctx.beginPath(); tctx.moveTo(x1, y1); tctx.lineTo(x2, y2);
+    tctx.strokeStyle = '#94a3b8'; tctx.lineWidth = 1.5; tctx.setLineDash([]); tctx.stroke();
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    const len = 11, sp = 0.42;
+    tctx.beginPath();
+    tctx.moveTo(x2, y2);
+    tctx.lineTo(x2 - len * Math.cos(angle - sp), y2 - len * Math.sin(angle - sp));
+    tctx.moveTo(x2, y2);
+    tctx.lineTo(x2 - len * Math.cos(angle + sp), y2 - len * Math.sin(angle + sp));
+    tctx.strokeStyle = '#94a3b8'; tctx.lineWidth = 1.8; tctx.stroke();
+  }
+  // Draw nodes
+  for (const node of state.nodes) {
+    const bw = getNodeWidth(node.text);
+    const bx = node.x - bw / 2, by = node.y - NODE_H / 2;
+    tctx.fillStyle = node.color;
+    tctx.beginPath();
+    const r = 8;
+    tctx.moveTo(bx + r, by); tctx.lineTo(bx + bw - r, by);
+    tctx.quadraticCurveTo(bx + bw, by, bx + bw, by + r);
+    tctx.lineTo(bx + bw, by + NODE_H - r);
+    tctx.quadraticCurveTo(bx + bw, by + NODE_H, bx + bw - r, by + NODE_H);
+    tctx.lineTo(bx + r, by + NODE_H);
+    tctx.quadraticCurveTo(bx, by + NODE_H, bx, by + NODE_H - r);
+    tctx.lineTo(bx, by + r);
+    tctx.quadraticCurveTo(bx, by, bx + r, by); tctx.closePath();
+    tctx.fill();
+    tctx.fillStyle = '#fff';
+    const isFirst = state.nodes[0] === node;
+    tctx.font = (isFirst ? 'bold ' : '') + '13px system-ui, -apple-system, sans-serif';
+    tctx.textAlign = 'center'; tctx.textBaseline = 'middle';
+    tctx.fillText(node.text || 'Node', node.x, node.y);
+  }
+}
+
+function repositionEditorIfOpen() {
+  if (!editingNode) return;
+  const r = canvas.getBoundingClientRect();
+  const b = nodeBounds(editingNode);
+  nodeEditor.style.left = (r.left + b.x) + 'px';
+  nodeEditor.style.top = (r.top + b.y + 1) + 'px';
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+
+let toastTimer;
+const toastEl = document.getElementById('toast');
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2200);
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+
+resizeCanvas();
+</script>
+</body>
+</html>

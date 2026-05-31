@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diff Viewer</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --accent: #3b82f6;
+      --accent-light: #eff6ff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --font: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      --mono: 'Cascadia Code', 'Fira Code', 'Monaco', 'Courier New', monospace;
+      --add-bg: #dcfce7; --add-text: #14532d; --add-bar: #16a34a;
+      --rem-bg: #fee2e2; --rem-text: #7f1d1d; --rem-bar: #dc2626;
+      --eq-bg: #f8fafc;  --eq-text: #475569;
+      --ln-color: #94a3b8;
+      --mod-bg: #fef3c7; --mod-text: #92400e; --mod-bar: #d97706;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: var(--font); color: var(--text); background: var(--bg); }
+
+    /* ── Header ── */
+    header {
+      position: sticky; top: 0; z-index: 10;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 0 16px; height: 52px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .header-title { font-size: 15px; font-weight: 700; letter-spacing: -0.02em; }
+    .header-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+    /* Mode toggle */
+    .mode-toggle { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+    .mode-btn {
+      padding: 5px 14px; font-size: 12px; font-weight: 500;
+      background: var(--surface); color: var(--muted); border: none; cursor: pointer;
+      transition: background 0.12s, color 0.12s;
+    }
+    .mode-btn.active { background: var(--accent); color: #fff; }
+    .mode-btn:not(.active):hover { background: var(--bg); color: var(--text); }
+
+    /* ── Workspace ── */
+    .workspace { display: grid; grid-template-columns: 1fr 1fr; height: calc(100vh - 52px); }
+    .panel { display: flex; flex-direction: column; overflow: hidden; }
+    .panel-left { border-right: 1px solid var(--border); }
+
+    /* ── Shared sub-panel wrapper ── */
+    .sub-panel { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+    /* ── Text mode: left inputs ── */
+    .input-half {
+      flex: 1; display: flex; flex-direction: column;
+      border-bottom: 1px solid var(--border); min-height: 0;
+    }
+    .input-half:last-child { border-bottom: none; }
+    .input-label {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 7px 14px; background: var(--bg); border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .input-label-text { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    .clear-btn {
+      background: none; border: none; cursor: pointer;
+      font-size: 11px; color: #94a3b8; padding: 2px 6px; border-radius: 3px;
+      transition: background 0.12s, color 0.12s;
+    }
+    .clear-btn:hover { background: var(--border); color: var(--text); }
+    .input-textarea {
+      flex: 1; width: 100%; padding: 12px 14px;
+      font-family: var(--mono); font-size: 12.5px; line-height: 1.65;
+      background: var(--surface); color: var(--text);
+      border: none; outline: none; resize: none;
+    }
+    .input-textarea::placeholder { color: #cbd5e1; }
+
+    /* ── Text mode: right diff ── */
+    .diff-bar {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+      flex-wrap: wrap; row-gap: 6px;
+    }
+    .diff-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    .view-toggle { display: flex; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; }
+    .view-btn {
+      padding: 4px 10px; font-size: 11px; font-weight: 500;
+      background: var(--surface); color: var(--muted); border: none; cursor: pointer;
+      transition: background 0.12s, color 0.12s;
+    }
+    .view-btn.active { background: var(--accent); color: #fff; }
+    .view-btn:not(.active):hover { background: var(--bg); color: var(--text); }
+    .stats { display: flex; gap: 10px; font-size: 11px; font-weight: 600; flex-wrap: wrap; }
+    .stat-add { color: #16a34a; }
+    .stat-rem { color: #dc2626; }
+    .stat-eq  { color: var(--muted); }
+    .stat-mod { color: #d97706; }
+    .copy-btn {
+      margin-left: auto; padding: 5px 12px; font-size: 11px; font-weight: 500;
+      background: var(--border); color: var(--text); border: none; border-radius: 5px;
+      cursor: pointer; transition: background 0.12s;
+    }
+    .copy-btn:hover { background: #cbd5e1; }
+    #diff-output {
+      flex: 1; overflow-y: auto; overflow-x: auto;
+      background: var(--surface); font-family: var(--mono); font-size: 12px; line-height: 1.6;
+    }
+    #diff-output::-webkit-scrollbar { width: 5px; height: 5px; }
+    #diff-output::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .diff-line {
+      display: flex; align-items: baseline; white-space: pre;
+      border-left: 3px solid transparent; padding: 0 12px 0 0;
+    }
+    .diff-line.add  { background: var(--add-bg); border-left-color: var(--add-bar); color: var(--add-text); }
+    .diff-line.rem  { background: var(--rem-bg); border-left-color: var(--rem-bar); color: var(--rem-text); }
+    .diff-line.eq   { background: var(--eq-bg); color: var(--eq-text); }
+    .ln-gutter { display: flex; flex-shrink: 0; user-select: none; }
+    .ln { display: inline-block; min-width: 38px; padding: 0 8px; text-align: right; color: var(--ln-color); font-size: 11px; }
+    .ln.dim { color: #dde1e8; }
+    .diff-prefix { display: inline-block; min-width: 16px; padding: 0 2px; font-weight: 700; flex-shrink: 0; }
+    .diff-text { flex: 1; padding-left: 4px; min-width: 0; }
+    #sbs-output { flex: 1; display: none; overflow: hidden; }
+    .sbs-wrap { display: grid; grid-template-columns: 1fr 1fr; height: 100%; overflow: hidden; }
+    .sbs-col { overflow-y: auto; overflow-x: auto; font-family: var(--mono); font-size: 12px; line-height: 1.6; border-right: 1px solid var(--border); }
+    .sbs-col:last-child { border-right: none; }
+    .sbs-header { position: sticky; top: 0; z-index: 1; background: var(--bg); border-bottom: 1px solid var(--border); padding: 5px 12px; font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    .sbs-col::-webkit-scrollbar { width: 4px; height: 4px; }
+    .sbs-col::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .sbs-line { display: flex; align-items: baseline; white-space: pre; border-left: 3px solid transparent; padding: 0 12px 0 0; }
+    .sbs-line.add   { background: var(--add-bg); border-left-color: var(--add-bar); color: var(--add-text); }
+    .sbs-line.rem   { background: var(--rem-bg); border-left-color: var(--rem-bar); color: var(--rem-text); }
+    .sbs-line.eq    { background: var(--eq-bg); color: var(--eq-text); }
+    .sbs-line.blank { background: #f1f5f9; }
+    #empty-diff { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--muted); }
+    #empty-diff .icon { font-size: 36px; opacity: 0.4; }
+    #empty-diff p { font-size: 12px; }
+
+    /* ── Folder mode: left pickers ── */
+    .folder-half {
+      flex: 1; display: flex; flex-direction: column;
+      border-bottom: 1px solid var(--border); min-height: 0;
+    }
+    .folder-half:last-child { border-bottom: none; }
+    .folder-body {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 8px; padding: 16px; overflow-y: auto;
+    }
+    .folder-body.loaded { align-items: flex-start; justify-content: flex-start; }
+    .folder-pick-btn {
+      padding: 7px 16px; font-size: 12px; font-weight: 500; border-radius: 6px;
+      border: 2px dashed var(--border); background: var(--surface); color: var(--muted);
+      cursor: pointer; transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+    .folder-pick-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+    .folder-hint { font-size: 11px; color: #cbd5e1; }
+    .folder-name { font-size: 12px; font-weight: 700; color: var(--text); font-family: var(--mono); word-break: break-all; }
+    .folder-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .folder-change-btn {
+      margin-top: 6px; background: none; border: 1px solid var(--border); cursor: pointer;
+      font-size: 11px; color: var(--muted); padding: 3px 10px; border-radius: 4px;
+      transition: background 0.12s;
+    }
+    .folder-change-btn:hover { background: var(--border); color: var(--text); }
+
+    /* ── Folder mode: right results ── */
+    /* file table */
+    #file-table { flex: 1; overflow-y: auto; background: var(--surface); }
+    #file-table::-webkit-scrollbar { width: 4px; }
+    #file-table::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .file-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 7px 14px; border-bottom: 1px solid var(--border);
+      font-size: 12px; transition: background 0.1s;
+    }
+    .file-row:last-child { border-bottom: none; }
+    .file-row.clickable { cursor: pointer; }
+    .file-row.clickable:hover { background: var(--accent-light); }
+    .file-badge {
+      flex-shrink: 0; min-width: 66px; font-size: 10px; font-weight: 700;
+      letter-spacing: 0.05em; text-transform: uppercase;
+      padding: 2px 6px; border-radius: 3px; text-align: center;
+    }
+    .file-badge.modified  { background: var(--mod-bg); color: var(--mod-text); }
+    .file-badge.added     { background: var(--add-bg); color: var(--add-bar); }
+    .file-badge.removed   { background: var(--rem-bg); color: var(--rem-bar); }
+    .file-badge.identical { background: #f1f5f9; color: var(--muted); }
+    .file-badge.binary    { background: #f1f5f9; color: #94a3b8; }
+    .file-path { flex: 1; font-family: var(--mono); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-row.clickable .file-path { color: var(--accent); }
+    .file-chevron { flex-shrink: 0; color: var(--muted); font-size: 13px; }
+
+    /* file diff panel */
+    #file-diff-panel { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+    .file-diff-bar {
+      display: flex; align-items: center; gap: 10px;
+      padding: 7px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+      background: var(--bg); flex-wrap: wrap; row-gap: 4px;
+    }
+    .back-btn {
+      background: none; border: 1px solid var(--border); cursor: pointer;
+      font-size: 11px; font-weight: 500; color: var(--text);
+      padding: 3px 10px; border-radius: 4px; transition: background 0.12s; flex-shrink: 0;
+    }
+    .back-btn:hover { background: var(--border); }
+    .file-diff-path { flex: 1; font-size: 11px; font-family: var(--mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    #file-diff-lines { flex: 1; overflow-y: auto; overflow-x: auto; background: var(--surface); font-family: var(--mono); font-size: 12px; line-height: 1.6; }
+    #file-diff-lines::-webkit-scrollbar { width: 5px; height: 5px; }
+    #file-diff-lines::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* folder empty / loading */
+    #folder-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--muted); }
+    #folder-empty .icon { font-size: 36px; opacity: 0.4; }
+    #folder-empty p { font-size: 12px; }
+    #folder-loading { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--muted); }
+    .spinner { width: 22px; height: 22px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #folder-loading p { font-size: 12px; }
+
+    /* Filter chips */
+    .filter-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+    .chip {
+      padding: 3px 9px; font-size: 10px; font-weight: 600; border-radius: 12px;
+      border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+      cursor: pointer; transition: background 0.12s, color 0.12s, border-color 0.12s;
+    }
+    .chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .chip:not(.active):hover { background: var(--bg); color: var(--text); }
+
+    /* ── Search inputs ── */
+    .diff-search {
+      padding: 4px 10px; font-size: 11px;
+      border: 1px solid var(--border); border-radius: 12px;
+      background: var(--bg); color: var(--text); outline: none;
+      width: 155px; font-family: var(--font);
+      transition: border-color .15s;
+    }
+    .diff-search:focus { border-color: var(--accent); }
+    .diff-search::placeholder { color: var(--muted); }
+    .search-match-count { font-size: 11px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+    .diff-line mark, .sbs-line mark, .file-path mark {
+      background: #fef08a; color: inherit; border-radius: 2px; padding: 0 1px;
+    }
+    .diff-line.highlighted { outline: 2px solid #facc15; outline-offset: -2px; }
+
+    /* Toast */
+    #toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(12px);
+      background: #1e293b; color: #f1f5f9;
+      padding: 9px 16px; border-radius: 8px; font-size: 12px; font-weight: 500;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.18s, transform 0.18s; z-index: 1000; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    @media (max-width: 860px) {
+      .workspace { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+      .panel-left { border-right: none; border-bottom: 1px solid var(--border); }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div style="flex:1;min-width:0">
+    <div class="header-title">⟺ Diff Viewer</div>
+    <div class="header-sub" id="header-sub">Paste two text blocks · see line-by-line differences</div>
+  </div>
+  <div class="mode-toggle">
+    <button class="mode-btn active" data-mode="text">Text</button>
+    <button class="mode-btn" data-mode="folder">Folder</button>
+  </div>
+</header>
+
+<div class="workspace">
+
+  <!-- ── Left panel ── -->
+  <div class="panel panel-left">
+
+    <!-- Text mode: two textareas -->
+    <div id="text-left" class="sub-panel">
+      <div class="input-half">
+        <div class="input-label">
+          <span class="input-label-text">Original</span>
+          <button class="clear-btn" data-target="original">Clear</button>
+        </div>
+        <textarea id="original" class="input-textarea" placeholder="Paste original text here…" spellcheck="false"></textarea>
+      </div>
+      <div class="input-half">
+        <div class="input-label">
+          <span class="input-label-text">Modified</span>
+          <button class="clear-btn" data-target="modified">Clear</button>
+        </div>
+        <textarea id="modified" class="input-textarea" placeholder="Paste modified text here…" spellcheck="false"></textarea>
+      </div>
+    </div>
+
+    <!-- Folder mode: two folder pickers -->
+    <div id="folder-left" class="sub-panel" style="display:none">
+      <div class="folder-half">
+        <div class="input-label">
+          <span class="input-label-text">Folder A — Original</span>
+        </div>
+        <div class="folder-body" id="body-a">
+          <button class="folder-pick-btn" id="btn-pick-a">Choose Folder A</button>
+          <span class="folder-hint">Original / baseline folder</span>
+        </div>
+        <input type="file" id="input-folder-a" webkitdirectory multiple style="display:none">
+      </div>
+      <div class="folder-half">
+        <div class="input-label">
+          <span class="input-label-text">Folder B — Modified</span>
+        </div>
+        <div class="folder-body" id="body-b">
+          <button class="folder-pick-btn" id="btn-pick-b">Choose Folder B</button>
+          <span class="folder-hint">Changed / updated folder</span>
+        </div>
+        <input type="file" id="input-folder-b" webkitdirectory multiple style="display:none">
+      </div>
+    </div>
+
+  </div><!-- /panel-left -->
+
+  <!-- ── Right panel ── -->
+  <div class="panel" id="right-panel">
+
+    <!-- Text mode diff output -->
+    <div id="text-right" class="sub-panel">
+      <div class="diff-bar">
+        <span class="diff-label">Diff</span>
+        <div class="view-toggle">
+          <button class="view-btn active" data-view="unified">Unified</button>
+          <button class="view-btn" data-view="sbs">Side by side</button>
+        </div>
+        <input type="search" id="text-search" class="diff-search" placeholder="Find in diff…" autocomplete="off">
+        <span class="search-match-count" id="text-match-count" style="display:none"></span>
+        <div class="stats" id="stats" style="display:none">
+          <span class="stat-add" id="stat-add"></span>
+          <span class="stat-rem" id="stat-rem"></span>
+          <span class="stat-eq"  id="stat-eq"></span>
+        </div>
+        <button class="copy-btn" id="btn-copy" style="display:none">Copy diff</button>
+      </div>
+      <div id="diff-output" style="display:none"></div>
+      <div id="sbs-output">
+        <div class="sbs-wrap">
+          <div class="sbs-col" id="sbs-left"><div class="sbs-header">Original</div></div>
+          <div class="sbs-col" id="sbs-right"><div class="sbs-header">Modified</div></div>
+        </div>
+      </div>
+      <div id="empty-diff">
+        <div class="icon">⟺</div>
+        <p>Paste text in both panels — differences appear here</p>
+      </div>
+    </div>
+
+    <!-- Folder mode diff output -->
+    <div id="folder-right" class="sub-panel" style="display:none">
+
+      <!-- Stats + filter bar -->
+      <div class="diff-bar" id="folder-bar" style="display:none">
+        <div class="stats" id="folder-stats">
+          <span class="stat-mod" id="fs-mod"></span>
+          <span class="stat-add" id="fs-add"></span>
+          <span class="stat-rem" id="fs-rem"></span>
+          <span class="stat-eq"  id="fs-eq"></span>
+        </div>
+        <div class="filter-chips" id="filter-chips">
+          <button class="chip active" data-filter="all">All</button>
+          <button class="chip" data-filter="modified">Modified</button>
+          <button class="chip" data-filter="added">Added</button>
+          <button class="chip" data-filter="removed">Removed</button>
+          <button class="chip" data-filter="identical">Identical</button>
+        </div>
+        <input type="search" id="file-search" class="diff-search" placeholder="Filter files…" autocomplete="off">
+      </div>
+
+      <!-- File comparison table -->
+      <div id="file-table" style="display:none"></div>
+
+      <!-- Per-file diff panel -->
+      <div id="file-diff-panel">
+        <div class="file-diff-bar">
+          <button class="back-btn" id="btn-back">← Files</button>
+          <span class="file-diff-path" id="file-diff-path"></span>
+          <div class="stats" id="file-stats"></div>
+        </div>
+        <div id="file-diff-lines"></div>
+      </div>
+
+      <!-- Loading -->
+      <div id="folder-loading" style="display:none">
+        <div class="spinner"></div>
+        <p id="loading-msg">Comparing folders…</p>
+      </div>
+
+      <!-- Empty state -->
+      <div id="folder-empty">
+        <div class="icon">📁</div>
+        <p>Select both folders to compare their contents</p>
+      </div>
+
+    </div><!-- /folder-right -->
+
+  </div><!-- /right-panel -->
+
+</div><!-- /workspace -->
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+// ── Search state ──────────────────────────────────────────────────────────
+
+let textSearchQuery = '';
+let fileSearchQuery = '';
+
+function highlightText(str, query) {
+  if (!query) return escHtml(str);
+  const re = new RegExp('(' + query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+  return str.split(re).map((p, i) =>
+    i % 2 === 1
+      ? '<mark>' + escHtml(p) + '</mark>'
+      : escHtml(p)
+  ).join('');
+}
+
+// ── LCS diff algorithm ─────────────────────────────────────────────────────
+
+function diffLines(oldArr, newArr) {
+  const m = oldArr.length, n = newArr.length;
+  const dp = new Array(m + 1);
+  for (let i = 0; i <= m; i++) dp[i] = new Uint32Array(n + 1);
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = oldArr[i-1] === newArr[j-1] ? dp[i-1][j-1] + 1 : Math.max(dp[i-1][j], dp[i][j-1]);
+  const result = [];
+  let i = m, j = n;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && oldArr[i-1] === newArr[j-1]) { result.push({ type: 'eq',  text: oldArr[i-1] }); i--; j--; }
+    else if (j > 0 && (i === 0 || dp[i][j-1] >= dp[i-1][j])) { result.push({ type: 'add', text: newArr[j-1] }); j--; }
+    else { result.push({ type: 'rem', text: oldArr[i-1] }); i--; }
+  }
+  return result.reverse();
+}
+
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── Mode ───────────────────────────────────────────────────────────────────
+
+let appMode = 'text';
+
+function switchMode(mode) {
+  appMode = mode;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  document.getElementById('text-left').style.display   = mode === 'text'   ? 'flex' : 'none';
+  document.getElementById('folder-left').style.display = mode === 'folder' ? 'flex' : 'none';
+  document.getElementById('text-right').style.display   = mode === 'text'   ? 'flex' : 'none';
+  document.getElementById('folder-right').style.display = mode === 'folder' ? 'flex' : 'none';
+  document.getElementById('header-sub').textContent = mode === 'text'
+    ? 'Paste two text blocks · see line-by-line differences'
+    : 'Select two folders · compare files side by side';
+}
+
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => switchMode(btn.dataset.mode));
+});
+
+// ── Text mode ──────────────────────────────────────────────────────────────
+
+let currentView = 'unified';
+let lastDiff = [];
+let debounceTimer;
+
+const originalTA = document.getElementById('original');
+const modifiedTA = document.getElementById('modified');
+const diffOutput  = document.getElementById('diff-output');
+const sbsOutput   = document.getElementById('sbs-output');
+const emptyDiff   = document.getElementById('empty-diff');
+const statsEl     = document.getElementById('stats');
+const statAdd     = document.getElementById('stat-add');
+const statRem     = document.getElementById('stat-rem');
+const statEq      = document.getElementById('stat-eq');
+const copyBtn     = document.getElementById('btn-copy');
+
+function renderUnified(diff) {
+  const q = textSearchQuery.trim();
+  let oldLn = 0, newLn = 0, matchCount = 0;
+  diffOutput.innerHTML = diff.map(d => {
+    let lo = '', ln = '';
+    if (d.type === 'eq')  { oldLn++; newLn++; lo = oldLn; ln = newLn; }
+    if (d.type === 'rem') { oldLn++; lo = oldLn; }
+    if (d.type === 'add') { newLn++; ln = newLn; }
+    const prefix = d.type === 'add' ? '+' : d.type === 'rem' ? '−' : ' ';
+    const isMatch = q && d.text.toLowerCase().includes(q.toLowerCase());
+    if (isMatch) matchCount++;
+    const hiddenStyle = (q && !isMatch) ? ' style="display:none"' : '';
+    const hlCls = isMatch ? ' highlighted' : '';
+    return `<div class="diff-line ${d.type}${hlCls}"${hiddenStyle}>` +
+      `<span class="ln-gutter"><span class="ln${lo?'':' dim'}">${lo}</span><span class="ln${ln?'':' dim'}">${ln}</span></span>` +
+      `<span class="diff-prefix">${prefix}</span><span class="diff-text">${highlightText(d.text, q)}</span></div>`;
+  }).join('');
+  const countEl = document.getElementById('text-match-count');
+  if (q) {
+    countEl.textContent = matchCount + ' match' + (matchCount !== 1 ? 'es' : '');
+    countEl.style.display = '';
+    const first = diffOutput.querySelector('.highlighted');
+    if (first) first.scrollIntoView({ block: 'nearest' });
+  } else {
+    countEl.style.display = 'none';
+  }
+}
+
+function renderSbs(diff) {
+  const left = [], right = [];
+  let oldLn = 0, newLn = 0;
+  for (const d of diff) {
+    if (d.type === 'eq')  { oldLn++; newLn++; left.push({type:'eq',  ln:oldLn, text:d.text}); right.push({type:'eq',  ln:newLn, text:d.text}); }
+    else if (d.type === 'rem') { oldLn++; left.push({type:'rem', ln:oldLn, text:d.text}); right.push({type:'blank',ln:'',text:''}); }
+    else { newLn++; left.push({type:'blank',ln:'',text:''}); right.push({type:'add', ln:newLn, text:d.text}); }
+  }
+  const q = textSearchQuery.trim();
+  const colHtml = lines => lines.map(l =>
+    `<div class="sbs-line ${l.type}"><span class="ln">${l.ln}</span><span class="diff-text">${l.text?highlightText(l.text,q):'&nbsp;'}</span></div>`
+  ).join('');
+  const lc = document.getElementById('sbs-left');
+  const rc = document.getElementById('sbs-right');
+  lc.innerHTML = '<div class="sbs-header">Original</div>' + colHtml(left);
+  rc.innerHTML = '<div class="sbs-header">Modified</div>' + colHtml(right);
+  let syncing = false;
+  [lc, rc].forEach((col, idx) => {
+    const other = idx === 0 ? rc : lc;
+    col.addEventListener('scroll', () => { if (syncing) return; syncing = true; other.scrollTop = col.scrollTop; syncing = false; });
+  });
+}
+
+function computeAndRender() {
+  const orig = originalTA.value, mod = modifiedTA.value;
+  if (!orig && !mod) { showTextEmpty(); return; }
+  const oldLines = orig.split('\n'), newLines = mod.split('\n');
+  lastDiff = diffLines(oldLines, newLines);
+  let adds = 0, rems = 0, eqs = 0;
+  for (const d of lastDiff) { if (d.type==='add') adds++; else if (d.type==='rem') rems++; else eqs++; }
+  statsEl.style.display = 'flex'; copyBtn.style.display = 'block';
+  statAdd.textContent = `✚ ${adds} added`;
+  statRem.textContent = `✖ ${rems} removed`;
+  statEq.textContent  = `≡ ${eqs} unchanged`;
+  emptyDiff.style.display = 'none';
+  if (currentView === 'unified') { diffOutput.style.display='block'; sbsOutput.style.display='none'; renderUnified(lastDiff); }
+  else { diffOutput.style.display='none'; sbsOutput.style.display='block'; renderSbs(lastDiff); }
+}
+
+function showTextEmpty() {
+  emptyDiff.style.display='flex'; diffOutput.style.display='none'; sbsOutput.style.display='none';
+  statsEl.style.display='none'; copyBtn.style.display='none'; lastDiff=[];
+}
+
+function scheduleDiff() { clearTimeout(debounceTimer); debounceTimer = setTimeout(computeAndRender, 280); }
+originalTA.addEventListener('input', scheduleDiff);
+modifiedTA.addEventListener('input', scheduleDiff);
+
+document.addEventListener('click', e => {
+  const t = e.target;
+  if (t.classList.contains('clear-btn')) { document.getElementById(t.dataset.target).value=''; scheduleDiff(); return; }
+  if (t.classList.contains('view-btn') && t.closest('#text-right')) {
+    currentView = t.dataset.view;
+    document.querySelectorAll('#text-right .view-btn').forEach(b => b.classList.toggle('active', b===t));
+    if (lastDiff.length) computeAndRender(); return;
+  }
+  if (t.id === 'btn-copy') {
+    const text = lastDiff.map(d => (d.type==='add'?'+ ':d.type==='rem'?'- ':'  ') + d.text).join('\n');
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(()=>toast('Diff copied!')).catch(()=>fallbackCopy(text));
+    else fallbackCopy(text); return;
+  }
+});
+
+// ── Folder mode ────────────────────────────────────────────────────────────
+
+let folderAFiles = null;
+let folderBFiles = null;
+let folderResults = [];
+let activeFilter = 'all';
+
+function buildFileMap(fileList) {
+  const map = new Map();
+  for (const f of fileList) {
+    const parts = f.webkitRelativePath.split('/');
+    const rel = parts.slice(1).join('/');
+    if (rel) map.set(rel, f);
+  }
+  return map;
+}
+
+function readFileText(file) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload  = e => resolve(e.target.result.includes('\0') ? null : e.target.result);
+    reader.onerror = () => resolve(null);
+    reader.readAsText(file);
+  });
+}
+
+function showFolderState(which) {
+  document.getElementById('folder-bar').style.display    = which === 'table' ? 'flex' : 'none';
+  document.getElementById('file-table').style.display    = which === 'table' ? 'block' : 'none';
+  document.getElementById('file-diff-panel').style.display = which === 'diff'   ? 'flex' : 'none';
+  document.getElementById('folder-loading').style.display  = which === 'loading' ? 'flex' : 'none';
+  document.getElementById('folder-empty').style.display    = which === 'empty'   ? 'flex' : 'none';
+}
+
+function updateFolderBody(id, fileList, folderName) {
+  const body = document.getElementById('body-' + id);
+  body.className = 'folder-body loaded';
+  const count = fileList.length;
+  body.innerHTML = `
+    <div class="folder-name">📁 ${escHtml(folderName)}</div>
+    <div class="folder-meta">${count} file${count !== 1 ? 's' : ''}</div>
+    <button class="folder-change-btn" id="btn-change-${id}">Change folder</button>`;
+  document.getElementById('btn-change-' + id).addEventListener('click', () => {
+    const inp = document.getElementById('input-folder-' + id);
+    inp.value = ''; inp.click();
+  });
+}
+
+async function runFolderComparison() {
+  if (!folderAFiles || !folderBFiles) return;
+  fileSearchQuery = '';
+  const fsEl = document.getElementById('file-search');
+  if (fsEl) fsEl.value = '';
+  showFolderState('loading');
+  document.getElementById('loading-msg').textContent = 'Reading files…';
+
+  const mapA = buildFileMap(folderAFiles);
+  const mapB = buildFileMap(folderBFiles);
+  const allPaths = [...new Set([...mapA.keys(), ...mapB.keys()])].sort();
+
+  folderResults = [];
+  let done = 0;
+
+  for (const path of allPaths) {
+    const inA = mapA.has(path), inB = mapB.has(path);
+    done++;
+    if (done % 20 === 0) document.getElementById('loading-msg').textContent = `Comparing ${done} / ${allPaths.length} files…`;
+
+    if (inA && !inB) {
+      const textA = await readFileText(mapA.get(path));
+      folderResults.push({ path, status: 'removed', textA, textB: null });
+    } else if (!inA && inB) {
+      const textB = await readFileText(mapB.get(path));
+      folderResults.push({ path, status: 'added', textA: null, textB });
+    } else {
+      const [textA, textB] = await Promise.all([readFileText(mapA.get(path)), readFileText(mapB.get(path))]);
+      if (textA === null || textB === null) {
+        folderResults.push({ path, status: 'binary', textA: null, textB: null });
+      } else {
+        folderResults.push({ path, status: textA === textB ? 'identical' : 'modified', textA, textB });
+      }
+    }
+  }
+
+  renderFileTable();
+}
+
+const STATUS = {
+  modified:  { label: 'Modified',  icon: '✎', click: true },
+  added:     { label: 'Added',     icon: '+', click: true },
+  removed:   { label: 'Removed',   icon: '−', click: true },
+  identical: { label: 'Identical', icon: '✓', click: true },
+  binary:    { label: 'Binary',    icon: '⊘', click: false },
+};
+
+function renderFileTable() {
+  const counts = { modified:0, added:0, removed:0, identical:0, binary:0 };
+  folderResults.forEach(r => counts[r.status]++);
+  const total = folderResults.length;
+
+  document.getElementById('fs-mod').textContent = `✎ ${counts.modified} modified`;
+  document.getElementById('fs-add').textContent = `✚ ${counts.added} added`;
+  document.getElementById('fs-rem').textContent = `✖ ${counts.removed} removed`;
+  document.getElementById('fs-eq').textContent  = `≡ ${counts.identical} identical`;
+
+  // Update chip labels with counts
+  document.querySelectorAll('#filter-chips .chip').forEach(c => {
+    const f = c.dataset.filter;
+    c.textContent = f === 'all' ? `All (${total})` : `${STATUS[f]?.label} (${counts[f] ?? 0})`;
+    c.classList.toggle('active', f === activeFilter);
+  });
+
+  const fq = fileSearchQuery.trim().toLowerCase();
+  const filtered = (activeFilter === 'all' ? folderResults : folderResults.filter(r => r.status === activeFilter))
+    .filter(r => !fq || r.path.toLowerCase().includes(fq));
+  const tableEl = document.getElementById('file-table');
+
+  if (filtered.length === 0) {
+    tableEl.innerHTML = '<div style="padding:24px;text-align:center;font-size:12px;color:var(--muted)">No files match' + (fq ? ' "' + escHtml(fileSearchQuery) + '"' : ' this filter') + '</div>';
+  } else {
+    tableEl.innerHTML = filtered.map(r => {
+      const s = STATUS[r.status];
+      return `<div class="file-row${s.click?' clickable':''}" data-path="${escHtml(r.path)}">` +
+        `<span class="file-badge ${r.status}">${s.icon} ${s.label}</span>` +
+        `<span class="file-path" title="${escHtml(r.path)}">${highlightText(r.path, fileSearchQuery.trim())}</span>` +
+        (s.click ? `<span class="file-chevron">›</span>` : '') +
+        `</div>`;
+    }).join('');
+  }
+
+  showFolderState('table');
+}
+
+function showFileDiff(result) {
+  document.getElementById('file-diff-path').textContent = result.path;
+  const linesEl = document.getElementById('file-diff-lines');
+  const fileStats = document.getElementById('file-stats');
+  fileStats.textContent = '';
+
+  function allLines(text, type) {
+    return (text || '').split('\n').map((line, i) => {
+      const lo = type === 'rem' ? i+1 : '';
+      const ln = type === 'add' ? i+1 : '';
+      const prefix = type === 'add' ? '+' : '−';
+      return `<div class="diff-line ${type}">` +
+        `<span class="ln-gutter"><span class="ln${lo?'':' dim'}">${lo}</span><span class="ln${ln?'':' dim'}">${ln}</span></span>` +
+        `<span class="diff-prefix">${prefix}</span><span class="diff-text">${escHtml(line)}</span></div>`;
+    }).join('');
+  }
+
+  if (result.status === 'identical') {
+    linesEl.innerHTML = `<div style="padding:24px;text-align:center;font-size:12px;color:var(--muted)">Files are identical — no differences</div>`;
+  } else if (result.status === 'added') {
+    linesEl.innerHTML = allLines(result.textB, 'add');
+    fileStats.innerHTML = `<span class="stat-add">✚ ${result.textB.split('\n').length} lines</span>`;
+  } else if (result.status === 'removed') {
+    linesEl.innerHTML = allLines(result.textA, 'rem');
+    fileStats.innerHTML = `<span class="stat-rem">✖ ${result.textA.split('\n').length} lines</span>`;
+  } else if (result.status === 'modified') {
+    const diff = diffLines(result.textA.split('\n'), result.textB.split('\n'));
+    let adds = 0, rems = 0;
+    let oldLn = 0, newLn = 0;
+    linesEl.innerHTML = diff.map(d => {
+      let lo = '', ln = '';
+      if (d.type==='eq')  { oldLn++; newLn++; lo=oldLn; ln=newLn; }
+      if (d.type==='rem') { oldLn++; lo=oldLn; rems++; }
+      if (d.type==='add') { newLn++; ln=newLn; adds++; }
+      const p = d.type==='add'?'+':d.type==='rem'?'−':' ';
+      return `<div class="diff-line ${d.type}">` +
+        `<span class="ln-gutter"><span class="ln${lo?'':' dim'}">${lo}</span><span class="ln${ln?'':' dim'}">${ln}</span></span>` +
+        `<span class="diff-prefix">${p}</span><span class="diff-text">${escHtml(d.text)}</span></div>`;
+    }).join('');
+    fileStats.innerHTML = `<span class="stat-add">✚ ${adds}</span><span class="stat-rem">✖ ${rems}</span>`;
+  }
+
+  showFolderState('diff');
+}
+
+// Folder file inputs
+document.getElementById('btn-pick-a').addEventListener('click', () => { document.getElementById('input-folder-a').value=''; document.getElementById('input-folder-a').click(); });
+document.getElementById('btn-pick-b').addEventListener('click', () => { document.getElementById('input-folder-b').value=''; document.getElementById('input-folder-b').click(); });
+
+document.getElementById('input-folder-a').addEventListener('change', e => {
+  const files = e.target.files;
+  if (!files.length) return;
+  folderAFiles = files;
+  const name = files[0].webkitRelativePath.split('/')[0];
+  updateFolderBody('a', files, name);
+  if (folderBFiles) runFolderComparison();
+});
+
+document.getElementById('input-folder-b').addEventListener('change', e => {
+  const files = e.target.files;
+  if (!files.length) return;
+  folderBFiles = files;
+  const name = files[0].webkitRelativePath.split('/')[0];
+  updateFolderBody('b', files, name);
+  if (folderAFiles) runFolderComparison();
+});
+
+// Filter chips
+document.getElementById('filter-chips').addEventListener('click', e => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  activeFilter = chip.dataset.filter;
+  renderFileTable();
+});
+
+// Back button
+document.getElementById('btn-back').addEventListener('click', () => {
+  showFolderState('table');
+});
+
+// File row clicks
+document.getElementById('file-table').addEventListener('click', e => {
+  const row = e.target.closest('.file-row.clickable');
+  if (!row) return;
+  const path = row.dataset.path;
+  const result = folderResults.find(r => r.path === path);
+  if (result) showFileDiff(result);
+});
+
+// ── Search event listeners ─────────────────────────────────────────────────
+
+document.getElementById('text-search').addEventListener('input', e => {
+  textSearchQuery = e.target.value;
+  if (lastDiff.length) computeAndRender();
+});
+
+document.getElementById('file-search').addEventListener('input', e => {
+  fileSearchQuery = e.target.value;
+  renderFileTable();
+});
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+
+let toastTimer;
+const toastEl = document.getElementById('toast');
+function toast(msg) {
+  toastEl.textContent = msg; toastEl.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2200);
+}
+function fallbackCopy(text) {
+  const ta = Object.assign(document.createElement('textarea'), { value: text, style: 'position:fixed;left:-9999px' });
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); toast('Copied!'); } catch (_) { toast('Copy failed'); }
+  document.body.removeChild(ta);
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+
+showTextEmpty();
+showFolderState('empty');
+</script>
+</body>
+</html>

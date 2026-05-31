@@ -20,11 +20,12 @@
       display: flex;
       flex-direction: column;
       border-right: 1px solid #30363d;
-      transition: width 0.2s ease, min-width 0.2s ease;
+      transition: width 0.2s ease, min-width 0.2s ease, border-color 0.2s ease;
       overflow: hidden;
     }
 
     #sidebar.collapsed { width: 46px; min-width: 46px; }
+    #sidebar.hidden { width: 0; min-width: 0; border-right: 1px solid transparent; }
 
     /* header */
     #sidebar-header {
@@ -127,6 +128,196 @@
     .group-sep { height: 1px; background: #21262d; margin: 4px 10px; }
     #sidebar.collapsed .group-sep { margin: 4px 4px; }
 
+    /* sidebar footer with gear */
+    #sidebar-footer {
+      padding: 8px;
+      border-top: 1px solid #30363d;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex-shrink: 0;
+    }
+    #sidebar.collapsed #sidebar-footer { justify-content: center; }
+
+    #settings-open-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #484f58;
+      padding: 5px;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      transition: background 0.15s, color 0.15s;
+    }
+    #settings-open-btn:hover { background: #30363d; color: #e6edf3; }
+
+    /* ── Float toggle (visible only when sidebar hidden) ── */
+    #float-toggle {
+      position: fixed;
+      top: 10px;
+      left: 8px;
+      z-index: 100;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      color: #8b949e;
+      width: 30px;
+      height: 30px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background 0.15s, color 0.15s;
+    }
+    #float-toggle:hover { background: #30363d; color: #e6edf3; }
+    #app.sidebar-hidden #float-toggle { display: flex; }
+
+    /* ── Settings panel ── */
+    #settings-scrim {
+      position: fixed;
+      inset: 0;
+      z-index: 190;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+    }
+    #settings-scrim.open { display: block; }
+
+    #settings-panel {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 300px;
+      height: 100vh;
+      background: #161b22;
+      border-right: 1px solid #30363d;
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(-100%);
+      transition: transform 0.2s ease;
+      overflow: hidden;
+    }
+    #settings-panel.open { transform: translateX(0); }
+
+    #settings-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-bottom: 1px solid #30363d;
+      flex-shrink: 0;
+    }
+    #settings-panel-header h3 {
+      font-size: 12px;
+      font-weight: 700;
+      color: #e6edf3;
+      letter-spacing: 0.04em;
+    }
+
+    #settings-close-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #8b949e;
+      padding: 4px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      transition: background 0.15s, color 0.15s;
+    }
+    #settings-close-btn:hover { background: #30363d; color: #e6edf3; }
+
+    #settings-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+    #settings-body::-webkit-scrollbar { width: 3px; }
+    #settings-body::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
+
+    .settings-group-label {
+      font-size: 9.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #484f58;
+      padding: 12px 12px 4px;
+    }
+
+    .settings-tool-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 12px;
+      cursor: default;
+      border-left: 2px solid transparent;
+      transition: background 0.1s;
+    }
+    .settings-tool-row:hover { background: #1c2128; }
+    .settings-tool-row.drag-over { border-left-color: #388bfd; background: #0d2137; }
+    .settings-tool-row.dragging { opacity: 0.4; }
+
+    .drag-handle {
+      color: #484f58;
+      font-size: 13px;
+      cursor: grab;
+      flex-shrink: 0;
+      user-select: none;
+      letter-spacing: -2px;
+    }
+    .drag-handle:active { cursor: grabbing; }
+
+    .settings-tool-row input[type="checkbox"] {
+      accent-color: #388bfd;
+      width: 13px;
+      height: 13px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .settings-row-icon {
+      font-size: 13px;
+      width: 16px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .settings-row-label {
+      font-size: 12px;
+      color: #c9d1d9;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #settings-footer {
+      padding: 10px 12px;
+      border-top: 1px solid #30363d;
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .settings-action-btn {
+      flex: 1;
+      padding: 6px 10px;
+      font-size: 11.5px;
+      border-radius: 5px;
+      border: 1px solid #30363d;
+      background: #21262d;
+      color: #c9d1d9;
+      cursor: pointer;
+      transition: background 0.12s, color 0.12s;
+    }
+    .settings-action-btn:hover { background: #30363d; color: #e6edf3; }
+
     /* ── Content ── */
     #content { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #0d1117; }
 
@@ -161,7 +352,30 @@
       <span id="sidebar-title">Tools Hub</span>
     </div>
     <nav id="nav"></nav>
+    <div id="sidebar-footer">
+      <button id="settings-open-btn" title="Settings">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor">
+          <path fill-rule="evenodd" d="M7.429 1.525a6.593 6.593 0 011.142 0c.036.003.108.036.137.146l.289 1.105c.147.56.55.967.997 1.189.174.086.341.178.502.274.45.268.987.adaptation.2.546l1.108-.29c.11-.029.145.027.171.062a6.558 6.558 0 01.57.99c.016.03.032.111-.04.166l-.893.639a1.207 1.207 0 00-.497 1.107c.013.13.02.261.02.394 0 .133-.007.264-.02.394a1.207 1.207 0 00.497 1.107l.893.639c.072.055.056.136.04.166a6.558 6.558 0 01-.57.99c-.026.035-.06.091-.171.062l-1.108-.29c-.513-.134-1.049.088-1.35.456-.118.142-.241.278-.37.408-.37.37-.595.872-.731 1.39l-.289 1.105c-.029.11-.1.143-.137.146a6.593 6.593 0 01-1.142 0c-.036-.003-.108-.036-.137-.146l-.289-1.105c-.136-.518-.361-1.02-.73-1.39a5.065 5.065 0 01-.37-.409c-.302-.367-.838-.589-1.351-.455l-1.108.29c-.11.029-.145-.027-.171-.062a6.558 6.558 0 01-.57-.99c-.016-.03-.032-.111.04-.166l.893-.639a1.207 1.207 0 00.497-1.107A6.513 6.513 0 012 8c0-.133.007-.264.02-.394a1.207 1.207 0 00-.497-1.107l-.893-.639c-.072-.055-.056-.136-.04-.166a6.558 6.558 0 01.57-.99c.026-.035.06-.091.171-.062l1.108.29c.513.134 1.049-.088 1.35-.456.118-.142.241-.278.37-.408.37-.37.595-.872.731-1.39l.289-1.105c.029-.11.1-.143.137-.146zM8 11a3 3 0 100-6 3 3 0 000 6z"/>
+        </svg>
+      </button>
+    </div>
   </aside>
+
+  <button id="float-toggle" title="Show sidebar">&#8801;</button>
+
+  <div id="settings-scrim"></div>
+  <div id="settings-panel">
+    <div id="settings-panel-header">
+      <h3>SETTINGS</h3>
+      <button id="settings-close-btn" title="Close">&#10005;</button>
+    </div>
+    <div id="settings-body"></div>
+    <div id="settings-footer">
+      <button class="settings-action-btn" id="export-btn">Export</button>
+      <button class="settings-action-btn" id="import-btn">Import</button>
+      <input type="file" id="import-file" accept=".json" style="display:none">
+    </div>
+  </div>
 
   <div id="content">
     <div id="empty-state">
@@ -204,40 +418,149 @@
         { id: 'wf-multistage', label: 'Multi-Stage',   icon: '›', path: 'workflow_builder/multi_stage_builder.html', sub: true },
       ],
     },
+    {
+      group: 'QA Tools',
+      items: [
+        { id: 'checklist-builder', label: 'Checklist Builder', icon: '☑', path: 'checklist_builder/index.html' },
+        { id: 'mind-map',          label: 'Mind Map',          icon: '◉', path: 'mind_map/index.html' },
+        { id: 'diff-viewer',       label: 'Diff Viewer',       icon: '⟺', path: 'diff_viewer/index.html' },
+        { id: 'json-yaml-tools',   label: 'JSON / YAML Tools', icon: '{ }', path: 'json_yaml_tools/index.html' },
+      ],
+    },
+    {
+      group: 'Utilities',
+      items: [
+        { id: 'world-clock',   label: 'World Clock',  icon: '◷', path: 'world_clock/index.html' },
+        { id: 'task-tracker',  label: 'Task Tracker', icon: '✔', path: 'task_tracker/index.html' },
+        { id: 'work-log',      label: 'WorkLog',      icon: '📋', path: 'work_log/index.html' },
+      ],
+    },
   ];
 
-  const sidebar  = document.getElementById('sidebar');
-  const nav      = document.getElementById('nav');
-  const iframe   = document.getElementById('tool-iframe');
-  const empty    = document.getElementById('empty-state');
-  const toggleBtn = document.getElementById('toggle-btn');
+  // ── Settings data layer ──────────────────────────────────────────────────
 
-  // Build sidebar nav
-  TOOLS.forEach(group => {
-    const groupEl = document.createElement('div');
-    groupEl.className = 'group-label';
-    groupEl.textContent = group.group;
-    nav.appendChild(groupEl);
+  const SETTINGS_KEY = 'hub:settings';
+  const SIDEBAR_KEY  = 'hub:sidebar';
 
-    group.items.forEach(tool => {
-      const btn = document.createElement('button');
-      btn.className = 'tool-btn' + (tool.sub ? ' sub-item' : '');
-      btn.dataset.id = tool.id;
-      btn.title = tool.label;
-      btn.innerHTML = `<span class="icon">${tool.icon}</span><span class="label">${tool.label}</span>`;
-      btn.addEventListener('click', () => activate(tool));
-      nav.appendChild(btn);
+  function buildDefaultSettings() {
+    const tools = [];
+    TOOLS.forEach(group => {
+      group.items.forEach((tool, i) => {
+        tools.push({ id: tool.id, visible: true, group: group.group, order: i });
+      });
     });
-  });
+    return { version: 1, tools };
+  }
+
+  function loadSettings() {
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(SETTINGS_KEY)); } catch (e) {}
+    if (!saved || saved.version !== 1 || !Array.isArray(saved.tools)) {
+      return buildDefaultSettings();
+    }
+
+    const savedMap = new Map(saved.tools.map(t => [t.id, t]));
+    const allTools = TOOLS.flatMap(g => g.items.map(t => ({ ...t, defaultGroup: g.group })));
+
+    const merged = [];
+    saved.tools.forEach(s => {
+      if (allTools.find(t => t.id === s.id)) {
+        merged.push({ id: s.id, visible: !!s.visible, group: s.group, order: s.order });
+      }
+    });
+    allTools.forEach((t, i) => {
+      if (!savedMap.has(t.id)) {
+        merged.push({ id: t.id, visible: true, group: t.defaultGroup, order: 9999 + i });
+      }
+    });
+
+    return { version: 1, tools: merged };
+  }
+
+  function saveSettings(settings) {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  }
+
+  let currentSettings = loadSettings();
+
+  // ── DOM refs ─────────────────────────────────────────────────────────────
+
+  const sidebar       = document.getElementById('sidebar');
+  const nav           = document.getElementById('nav');
+  const iframe        = document.getElementById('tool-iframe');
+  const empty         = document.getElementById('empty-state');
+  const toggleBtn     = document.getElementById('toggle-btn');
+  const floatToggle   = document.getElementById('float-toggle');
+  const settingsPanel = document.getElementById('settings-panel');
+  const settingsScrim = document.getElementById('settings-scrim');
+  const settingsBody  = document.getElementById('settings-body');
+  const appEl         = document.getElementById('app');
+
+  // ── Tool meta lookup ─────────────────────────────────────────────────────
+
+  const toolMeta = new Map(
+    TOOLS.flatMap(g => g.items.map(t => [t.id, t]))
+  );
+
+  // ── Nav builder ──────────────────────────────────────────────────────────
+
+  function getEffectiveTools() {
+    const grouped = new Map();
+    currentSettings.tools
+      .slice()
+      .sort((a, b) => a.order - b.order)
+      .forEach(s => {
+        if (!grouped.has(s.group)) grouped.set(s.group, []);
+        grouped.get(s.group).push(s);
+      });
+
+    const groupOrder = TOOLS.map(g => g.group);
+    const sortedGroups = [...grouped.keys()].sort(
+      (a, b) => groupOrder.indexOf(a) - groupOrder.indexOf(b)
+    );
+
+    return sortedGroups.map(groupName => ({
+      group: groupName,
+      items: grouped.get(groupName)
+        .filter(s => s.visible)
+        .map(s => toolMeta.get(s.id))
+        .filter(Boolean),
+    })).filter(g => g.items.length > 0);
+  }
+
+  function buildNav() {
+    nav.innerHTML = '';
+    getEffectiveTools().forEach(group => {
+      const groupEl = document.createElement('div');
+      groupEl.className = 'group-label';
+      groupEl.textContent = group.group;
+      nav.appendChild(groupEl);
+
+      group.items.forEach(tool => {
+        const btn = document.createElement('button');
+        btn.className = 'tool-btn' + (tool.sub ? ' sub-item' : '');
+        btn.dataset.id = tool.id;
+        btn.title = tool.label;
+        btn.innerHTML = `<span class="icon">${tool.icon}</span><span class="label">${tool.label}</span>`;
+        btn.addEventListener('click', () => {
+          activate(tool);
+          hideSidebar();
+        });
+        nav.appendChild(btn);
+      });
+    });
+  }
+
+  // ── Activate tool ─────────────────────────────────────────────────────────
 
   function activate(tool) {
     document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-    document.querySelector(`[data-id="${tool.id}"]`).classList.add('active');
+    const btn = document.querySelector(`[data-id="${tool.id}"]`);
+    if (btn) btn.classList.add('active');
 
     empty.style.display = 'none';
     iframe.style.display = 'block';
 
-    // Only reload if switching to a different tool
     if (iframe.dataset.current !== tool.id) {
       iframe.src = tool.path;
       iframe.dataset.current = tool.id;
@@ -246,21 +569,255 @@
     localStorage.setItem('hub:tool', tool.id);
   }
 
-  // Restore last-used tool
-  const lastId = localStorage.getItem('hub:tool');
-  if (lastId) {
-    const all = TOOLS.flatMap(g => g.items);
-    const saved = all.find(t => t.id === lastId);
-    if (saved) activate(saved);
+  // ── Sidebar state machine ─────────────────────────────────────────────────
+
+  function migrateSidebarState() {
+    const v = localStorage.getItem(SIDEBAR_KEY);
+    if (v === '1') localStorage.setItem(SIDEBAR_KEY, 'collapsed');
+    else if (v === '0' || v === null) localStorage.setItem(SIDEBAR_KEY, 'expanded');
   }
 
-  // Sidebar collapse toggle
-  toggleBtn.addEventListener('click', () => {
-    const collapsed = sidebar.classList.toggle('collapsed');
-    localStorage.setItem('hub:sidebar', collapsed ? '1' : '0');
+  function applySidebarState(state) {
+    sidebar.classList.remove('collapsed', 'hidden');
+    appEl.classList.remove('sidebar-hidden');
+    if (state === 'collapsed') {
+      sidebar.classList.add('collapsed');
+    } else if (state === 'hidden') {
+      sidebar.classList.add('hidden');
+      appEl.classList.add('sidebar-hidden');
+    }
+    localStorage.setItem(SIDEBAR_KEY, state);
+  }
+
+  function hideSidebar() {
+    const cur = localStorage.getItem(SIDEBAR_KEY);
+    if (cur !== 'hidden') sidebar.dataset.preHiddenState = cur;
+    applySidebarState('hidden');
+  }
+
+  function expandSidebar() {
+    applySidebarState(sidebar.dataset.preHiddenState || 'expanded');
+  }
+
+  // ── Settings panel ────────────────────────────────────────────────────────
+
+  function openSettings() {
+    renderSettingsPanel();
+    settingsPanel.classList.add('open');
+    settingsScrim.classList.add('open');
+  }
+
+  function closeSettings() {
+    settingsPanel.classList.remove('open');
+    settingsScrim.classList.remove('open');
+  }
+
+  function restoreActiveHighlight() {
+    const lastId = localStorage.getItem('hub:tool');
+    if (lastId) {
+      const btn = document.querySelector(`[data-id="${lastId}"]`);
+      if (btn) btn.classList.add('active');
+    }
+  }
+
+  let dragSrcId = null;
+
+  function attachDragHandlers(row) {
+    row.addEventListener('dragstart', e => {
+      dragSrcId = row.dataset.id;
+      e.dataTransfer.effectAllowed = 'move';
+      row.classList.add('dragging');
+    });
+
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+      settingsBody.querySelectorAll('.settings-tool-row').forEach(r => r.classList.remove('drag-over'));
+    });
+
+    row.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      settingsBody.querySelectorAll('.settings-tool-row').forEach(r => r.classList.remove('drag-over'));
+      row.classList.add('drag-over');
+    });
+
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      if (!dragSrcId || dragSrcId === row.dataset.id) return;
+
+      const srcEntry = currentSettings.tools.find(t => t.id === dragSrcId);
+      const dstEntry = currentSettings.tools.find(t => t.id === row.dataset.id);
+      if (!srcEntry || !dstEntry) return;
+
+      const sameGroup = srcEntry.group === dstEntry.group;
+
+      if (sameGroup) {
+        // Reorder within group
+        const groupEntries = currentSettings.tools
+          .filter(t => t.group === srcEntry.group)
+          .sort((a, b) => a.order - b.order);
+        const srcIdx = groupEntries.findIndex(t => t.id === srcEntry.id);
+        const dstIdx = groupEntries.findIndex(t => t.id === dstEntry.id);
+        groupEntries.splice(srcIdx, 1);
+        groupEntries.splice(dstIdx, 0, srcEntry);
+        groupEntries.forEach((t, i) => { t.order = i; });
+      } else {
+        // Move across groups
+        const srcGroupEntries = currentSettings.tools
+          .filter(t => t.group === srcEntry.group)
+          .sort((a, b) => a.order - b.order);
+        const dstGroupEntries = currentSettings.tools
+          .filter(t => t.group === dstEntry.group)
+          .sort((a, b) => a.order - b.order);
+
+        srcGroupEntries.splice(srcGroupEntries.findIndex(t => t.id === srcEntry.id), 1);
+        const dstPos = dstGroupEntries.findIndex(t => t.id === dstEntry.id);
+        dstGroupEntries.splice(dstPos, 0, srcEntry);
+        srcEntry.group = dstEntry.group;
+
+        srcGroupEntries.forEach((t, i) => { t.order = i; });
+        dstGroupEntries.forEach((t, i) => { t.order = i; });
+      }
+
+      saveSettings(currentSettings);
+      buildNav();
+      restoreActiveHighlight();
+      renderSettingsPanel();
+    });
+  }
+
+  function renderSettingsPanel() {
+    settingsBody.innerHTML = '';
+
+    const grouped = new Map();
+    currentSettings.tools
+      .slice()
+      .sort((a, b) => a.order - b.order)
+      .forEach(s => {
+        if (!grouped.has(s.group)) grouped.set(s.group, []);
+        grouped.get(s.group).push(s);
+      });
+
+    const groupOrder = TOOLS.map(g => g.group);
+    const sortedGroups = [...grouped.keys()].sort(
+      (a, b) => groupOrder.indexOf(a) - groupOrder.indexOf(b)
+    );
+
+    sortedGroups.forEach(groupName => {
+      const label = document.createElement('div');
+      label.className = 'settings-group-label';
+      label.textContent = groupName;
+      settingsBody.appendChild(label);
+
+      grouped.get(groupName).forEach(s => {
+        const meta = toolMeta.get(s.id);
+        if (!meta) return;
+
+        const row = document.createElement('div');
+        row.className = 'settings-tool-row';
+        row.draggable = true;
+        row.dataset.id = s.id;
+        row.dataset.group = s.group;
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = s.visible;
+        checkbox.title = `Show/hide ${meta.label}`;
+        checkbox.addEventListener('change', () => {
+          s.visible = checkbox.checked;
+          saveSettings(currentSettings);
+          buildNav();
+          restoreActiveHighlight();
+        });
+
+        row.innerHTML = `<span class="drag-handle" title="Drag to reorder">&#8942;&#8942;</span>`;
+        row.appendChild(checkbox);
+        row.insertAdjacentHTML('beforeend',
+          `<span class="settings-row-icon">${meta.icon}</span>` +
+          `<span class="settings-row-label">${meta.label}</span>`
+        );
+
+        attachDragHandlers(row);
+        settingsBody.appendChild(row);
+      });
+    });
+  }
+
+  // ── Export / Import ───────────────────────────────────────────────────────
+
+  document.getElementById('export-btn').addEventListener('click', () => {
+    const json = JSON.stringify(currentSettings, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'hub-settings.json';
+    a.click();
+    URL.revokeObjectURL(url);
   });
 
-  if (localStorage.getItem('hub:sidebar') === '1') sidebar.classList.add('collapsed');
+  const importFileInput = document.getElementById('import-file');
+
+  document.getElementById('import-btn').addEventListener('click', () => {
+    importFileInput.value = '';
+    importFileInput.click();
+  });
+
+  importFileInput.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        if (!parsed.version || !Array.isArray(parsed.tools)) {
+          alert('Invalid hub-settings.json — missing version or tools array.');
+          return;
+        }
+        currentSettings = parsed;
+        saveSettings(currentSettings);
+        buildNav();
+        restoreActiveHighlight();
+        renderSettingsPanel();
+      } catch (err) {
+        alert('Could not parse JSON file: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  // ── Event listeners ───────────────────────────────────────────────────────
+
+  toggleBtn.addEventListener('click', () => {
+    const cur = localStorage.getItem(SIDEBAR_KEY);
+    if (cur === 'hidden') {
+      expandSidebar();
+    } else if (cur === 'collapsed') {
+      applySidebarState('expanded');
+    } else {
+      applySidebarState('collapsed');
+    }
+  });
+
+  floatToggle.addEventListener('click', () => expandSidebar());
+
+  document.getElementById('settings-open-btn').addEventListener('click', openSettings);
+  document.getElementById('settings-close-btn').addEventListener('click', closeSettings);
+  settingsScrim.addEventListener('click', closeSettings);
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+
+  migrateSidebarState();
+  buildNav();
+  applySidebarState(localStorage.getItem(SIDEBAR_KEY) || 'expanded');
+
+  // Restore last-used tool (without hiding sidebar)
+  const lastId = localStorage.getItem('hub:tool');
+  if (lastId) {
+    const allTools = TOOLS.flatMap(g => g.items);
+    const saved = allTools.find(t => t.id === lastId);
+    if (saved) activate(saved);
+  }
 </script>
 </body>
 </html>
