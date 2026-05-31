@@ -364,6 +364,7 @@
     <button id="btn-export-csv" class="btn btn-secondary">Export CSV</button>
     <button id="btn-import-trigger" class="btn btn-secondary">Import</button>
     <input type="file" id="file-import" accept=".json" style="display:none">
+    <button id="btn-settings" class="btn btn-secondary" title="Settings">⚙ Settings</button>
   </div>
 </header>
 
@@ -388,6 +389,29 @@
 
 <div id="modal-backdrop" class="modal-backdrop hidden"></div>
 <div id="modal" class="modal hidden" role="dialog" aria-modal="true"></div>
+
+<div id="settings-backdrop" class="modal-backdrop hidden"></div>
+<div id="settings-modal" class="modal hidden" role="dialog" aria-modal="true" style="width:min(420px,calc(100vw - 32px));max-height:fit-content;">
+  <div class="modal-header">
+    <span class="modal-heading">Settings</span>
+    <button id="settings-close" class="btn btn-secondary" style="padding:3px 8px;font-size:12px;">✕</button>
+  </div>
+  <div class="modal-body" style="gap:16px;">
+    <div>
+      <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
+        <input type="checkbox" id="setting-save-dialog" style="margin-top:2px;width:15px;height:15px;flex-shrink:0;">
+        <div>
+          <div style="font-size:13px;font-weight:600;">Show "Save As" dialog when exporting</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px;">Opens a native save dialog so you can choose the download location. Supported in Chrome and Edge. Other browsers will fall back to the default Downloads folder.</div>
+        </div>
+      </label>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button id="settings-done" class="btn btn-primary">Done</button>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -1084,17 +1108,55 @@ function bulkDelete() {
 function bulkExport() {
   var sel=state.tasks.filter(function(t){ return selectedIds[t.id]; });
   var blob=new Blob([JSON.stringify({tasks:sel},null,2)],{type:'application/json'});
-  var a=document.createElement('a');
-  a.href=URL.createObjectURL(blob); a.download='tasks_selected_'+today()+'.json'; a.click();
-  URL.revokeObjectURL(a.href); toast('Exported '+sel.length+' tasks');
+  downloadFile(blob,'tasks_selected_'+today()+'.json','application/json');
+  toast('Exported '+sel.length+' tasks');
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+
+var SETTINGS_KEY = 'tt_settings';
+function loadSettings() { try { return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; } catch(_) { return {}; } }
+function saveSettings(s) { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }
+var appSettings = loadSettings();
+
+function openSettingsModal() {
+  document.getElementById('setting-save-dialog').checked = !!appSettings.saveDialog;
+  document.getElementById('settings-backdrop').classList.remove('hidden');
+  document.getElementById('settings-modal').classList.remove('hidden');
+}
+function closeSettingsModal() {
+  document.getElementById('settings-backdrop').classList.add('hidden');
+  document.getElementById('settings-modal').classList.add('hidden');
 }
 
 // ── Export / Import ───────────────────────────────────────────────────────────
 
+async function downloadFile(blob, filename, mimeType) {
+  if (appSettings.saveDialog && window.showSaveFilePicker) {
+    try {
+      var ext = filename.split('.').pop();
+      var handle = await window.showSaveFilePicker({
+        suggestedName: filename,
+        types: [{ description: 'Export file', accept: { [mimeType]: ['.'+ext] } }]
+      });
+      var writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return;
+    } catch(e) {
+      if (e.name === 'AbortError') return;
+    }
+  }
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 function exportJSON() {
   var blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
-  var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download='tasks_'+today()+'.json'; a.click(); URL.revokeObjectURL(a.href);
+  downloadFile(blob,'tasks_'+today()+'.json','application/json');
   state.lastExported=new Date().toISOString(); saveState();
   toast('Exported '+state.tasks.length+' tasks');
 }
@@ -1104,8 +1166,7 @@ function exportCSV() {
   var rows=state.tasks.map(function(t){ return headers.map(function(h){ return h==='tags'?q((t.tags||[]).join(';')):q(t[h]); }).join(','); });
   var csv=[headers.join(',')].concat(rows).join('\r\n');
   var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
-  var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download='tasks_'+today()+'.csv'; a.click(); URL.revokeObjectURL(a.href);
+  downloadFile(blob,'tasks_'+today()+'.csv','text/csv;charset=utf-8');
   toast('Exported CSV ('+state.tasks.length+' rows)');
 }
 
@@ -1478,6 +1539,14 @@ document.getElementById('btn-add').addEventListener('click', function(){ openMod
 document.getElementById('btn-print').addEventListener('click', function(){ window.print(); });
 document.getElementById('btn-export-json').addEventListener('click', exportJSON);
 document.getElementById('btn-export-csv').addEventListener('click', exportCSV);
+document.getElementById('btn-settings').addEventListener('click', openSettingsModal);
+document.getElementById('settings-close').addEventListener('click', closeSettingsModal);
+document.getElementById('settings-done').addEventListener('click', closeSettingsModal);
+document.getElementById('settings-backdrop').addEventListener('click', closeSettingsModal);
+document.getElementById('setting-save-dialog').addEventListener('change', function() {
+  appSettings.saveDialog = this.checked;
+  saveSettings(appSettings);
+});
 document.getElementById('btn-import-trigger').addEventListener('click', function(){ document.getElementById('file-import').click(); });
 document.getElementById('file-import').addEventListener('change', function(e) {
   var file=e.target.files[0]; if(!file) return;
