@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Assist — Options</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f8fafc; color: #1e293b; font-size: 14px; }
+  .page { max-width: 640px; margin: 40px auto; padding: 0 20px 60px; }
+  h1 { font-size: 22px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
+  .subtitle { color: #64748b; font-size: 13px; margin-bottom: 32px; }
+  .subtitle a { color: #3b82f6; }
+  .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 24px; margin-bottom: 20px; }
+  .card-title { font-size: 15px; font-weight: 600; color: #0f172a; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .card-title .dot { width: 8px; height: 8px; border-radius: 50%; background: #3b82f6; }
+  label { display: block; font-size: 12px; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+  select, input[type="text"], input[type="password"] {
+    width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px;
+    font-size: 13px; color: #1e293b; background: #fff; outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  select:focus, input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
+  .field { margin-bottom: 16px; }
+  .field:last-child { margin-bottom: 0; }
+  .help { font-size: 11px; color: #94a3b8; margin-top: 5px; }
+  .help a { color: #3b82f6; }
+  .section { display: none; }
+  .section.active { display: block; }
+  .provider-tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .provider-tab {
+    padding: 7px 14px; border-radius: 6px; border: 1px solid #e2e8f0;
+    background: #f8fafc; color: #64748b; cursor: pointer; font-size: 13px;
+    font-weight: 500; transition: all 0.12s;
+  }
+  .provider-tab:hover { border-color: #3b82f6; color: #3b82f6; }
+  .provider-tab.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+  .btn-row { display: flex; gap: 10px; align-items: center; margin-top: 20px; }
+  .btn {
+    padding: 8px 18px; border-radius: 6px; border: none;
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.12s;
+  }
+  .btn-primary { background: #3b82f6; color: #fff; }
+  .btn-primary:hover { background: #2563eb; }
+  .btn-secondary { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+  .btn-secondary:hover { background: #e2e8f0; }
+  #status { font-size: 12px; padding: 6px 10px; border-radius: 6px; display: none; }
+  #status.ok { background: #dcfce7; color: #166534; display: block; }
+  #status.error { background: #fee2e2; color: #991b1b; display: block; }
+  .warning-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; }
+  .warning-box h3 { font-size: 13px; font-weight: 600; color: #92400e; margin-bottom: 6px; }
+  .warning-box p { font-size: 12px; color: #78350f; line-height: 1.5; }
+  .warning-box ol { margin: 8px 0 0 18px; font-size: 12px; color: #78350f; line-height: 1.8; }
+  code { background: #f1f5f9; padding: 1px 5px; border-radius: 3px; font-family: monospace; font-size: 11px; }
+  .ollama-tip { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px 14px; margin-top: 12px; font-size: 12px; color: #166534; line-height: 1.6; }
+  .ollama-tip code { background: #dcfce7; }
+  .separator { border: none; border-top: 1px solid #f1f5f9; margin: 16px 0; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>✦ AI Assist — Options</h1>
+  <p class="subtitle">Configure your AI provider. Settings are saved in Chrome and apply to all your local HTML tools.</p>
+
+  <div class="warning-box">
+    <h3>One-time setup: Allow file:// access</h3>
+    <p>Chrome requires you to manually enable file access for this extension:</p>
+    <ol>
+      <li>Go to <strong>chrome://extensions</strong></li>
+      <li>Find <strong>AI Assist — ManualToolsSet</strong></li>
+      <li>Click <strong>Details</strong> → enable <strong>"Allow access to file URLs"</strong></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="dot"></span> AI Provider</div>
+
+    <div class="provider-tabs">
+      <button class="provider-tab active" data-provider="gemini">Google Gemini</button>
+      <button class="provider-tab" data-provider="ollama">Ollama (Local)</button>
+      <button class="provider-tab" data-provider="claude">Claude (Anthropic)</button>
+      <button class="provider-tab" data-provider="openai">OpenAI</button>
+      <button class="provider-tab" data-provider="mcp">MCP Server</button>
+    </div>
+
+    <!-- Gemini -->
+    <div class="section active" id="section-gemini">
+      <div class="field">
+        <label>Gemini API Key</label>
+        <input type="password" id="gemini-key" placeholder="AIzaSy..." autocomplete="off">
+        <p class="help">Get your key at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a> (free tier available). Stored encrypted in Chrome.</p>
+      </div>
+      <div class="field">
+        <label>Model</label>
+        <select id="gemini-model">
+          <option value="gemini-2.5-flash">gemini-2.5-flash (recommended — fast &amp; smart)</option>
+          <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite (fastest, lower cost)</option>
+          <option value="gemini-2.5-pro">gemini-2.5-pro (most capable)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Ollama -->
+    <div class="section" id="section-ollama">
+      <div class="field">
+        <label>Ollama Server URL</label>
+        <input type="text" id="ollama-url" placeholder="http://localhost:11434" value="http://localhost:11434">
+      </div>
+      <div class="field">
+        <label>Model Name</label>
+        <input type="text" id="ollama-model" placeholder="llama3.2">
+        <p class="help">Run <code>ollama list</code> to see your downloaded models. Pull one with <code>ollama pull llama3.2</code></p>
+      </div>
+      <div class="ollama-tip">
+        <strong>CORS setup required:</strong> Ollama blocks cross-origin requests by default.<br>
+        Start Ollama with: <code>OLLAMA_ORIGINS=* ollama serve</code><br>
+        On Windows (PowerShell): <code>$env:OLLAMA_ORIGINS="*"; ollama serve</code>
+      </div>
+    </div>
+
+    <!-- Claude -->
+    <div class="section" id="section-claude">
+      <div class="field">
+        <label>Anthropic API Key</label>
+        <input type="password" id="claude-key" placeholder="sk-ant-..." autocomplete="off">
+        <p class="help">Get your key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>. Stored encrypted in Chrome.</p>
+      </div>
+      <div class="field">
+        <label>Model</label>
+        <select id="claude-model">
+          <option value="claude-haiku-4-5-20251001">claude-haiku-4-5 (fast &amp; cheap)</option>
+          <option value="claude-sonnet-4-6">claude-sonnet-4-6 (balanced)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- OpenAI -->
+    <div class="section" id="section-openai">
+      <div class="field">
+        <label>OpenAI API Key</label>
+        <input type="password" id="openai-key" placeholder="sk-..." autocomplete="off">
+        <p class="help">Get your key at <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a>. Stored encrypted in Chrome.</p>
+      </div>
+      <div class="field">
+        <label>Model</label>
+        <select id="openai-model">
+          <option value="gpt-4o-mini">gpt-4o-mini (fast &amp; cheap)</option>
+          <option value="gpt-4o">gpt-4o (more capable)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- MCP -->
+    <div class="section" id="section-mcp">
+      <div class="field">
+        <label>MCP Server URL</label>
+        <input type="text" id="mcp-url" placeholder="http://localhost:8000" value="http://localhost:8000">
+        <p class="help">For users already running a local MCP HTTP server. The server handles its own AI routing.</p>
+      </div>
+    </div>
+
+    <hr class="separator">
+    <div class="btn-row">
+      <button class="btn btn-primary" id="save-btn">Save Settings</button>
+      <button class="btn btn-secondary" id="test-btn">Test Connection</button>
+      <div id="status"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="dot"></span> Privacy Notice</div>
+    <p style="font-size:12px;color:#64748b;line-height:1.6">
+      Your API key is stored in Chrome's encrypted storage (<code>chrome.storage.sync</code>) and is never written to any HTML file or localStorage.<br><br>
+      When you click an AI feature, your task/checklist/log data is sent to the configured AI provider. For complete privacy, use <strong>Ollama</strong> (local, no data leaves your machine).
+    </p>
+  </div>
+</div>
+<script src="options.js"></script>
+</body>
+</html>

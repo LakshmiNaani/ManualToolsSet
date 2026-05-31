@@ -124,6 +124,26 @@
     .tool-btn.sub-item .icon { font-size: 11px; color: #484f58; }
     .tool-btn.sub-item.active .icon { color: #388bfd; }
 
+    .open-tab-btn {
+      flex-shrink: 0;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #484f58;
+      padding: 2px 3px;
+      border-radius: 3px;
+      font-size: 11px;
+      line-height: 1;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.12s, color 0.12s;
+      margin-left: auto;
+    }
+    .tool-btn:hover .open-tab-btn { display: flex; }
+    .open-tab-btn:hover { background: #30363d; color: #58a6ff; }
+    #sidebar.collapsed .open-tab-btn { display: none !important; }
+
     /* separator line before sub-groups */
     .group-sep { height: 1px; background: #21262d; margin: 4px 10px; }
     #sidebar.collapsed .group-sep { margin: 4px 4px; }
@@ -541,7 +561,11 @@
         btn.className = 'tool-btn' + (tool.sub ? ' sub-item' : '');
         btn.dataset.id = tool.id;
         btn.title = tool.label;
-        btn.innerHTML = `<span class="icon">${tool.icon}</span><span class="label">${tool.label}</span>`;
+        btn.innerHTML = `<span class="icon">${tool.icon}</span><span class="label">${tool.label}</span><button class="open-tab-btn" title="Open in new tab">&#x2197;</button>`;
+        btn.querySelector('.open-tab-btn').addEventListener('click', e => {
+          e.stopPropagation();
+          window.open(tool.path, '_blank');
+        });
         btn.addEventListener('click', () => {
           activate(tool);
           hideSidebar();

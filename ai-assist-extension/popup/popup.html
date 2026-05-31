@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Assist</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #fff; color: #1e293b; width: 280px; font-size: 13px;
+  }
+  .header {
+    background: #3b82f6; color: #fff; padding: 14px 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .header-icon { font-size: 20px; }
+  .header-text { flex: 1; }
+  .header-title { font-size: 15px; font-weight: 700; }
+  .header-sub { font-size: 11px; opacity: 0.8; margin-top: 1px; }
+  .body { padding: 14px 16px; }
+  .status-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .status-dot.green { background: #22c55e; }
+  .status-dot.yellow { background: #f59e0b; }
+  .status-dot.gray { background: #94a3b8; }
+  .status-label { font-size: 12px; color: #475569; }
+  .app-badge {
+    background: #eff6ff; color: #3b82f6; border: 1px solid #bfdbfe;
+    border-radius: 5px; padding: 3px 8px; font-size: 11px; font-weight: 600;
+    margin-bottom: 12px; display: inline-block;
+  }
+  .warning {
+    background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px;
+    padding: 10px 12px; margin-bottom: 12px;
+  }
+  .warning-title { font-size: 12px; font-weight: 600; color: #92400e; margin-bottom: 4px; }
+  .warning-text { font-size: 11px; color: #78350f; line-height: 1.5; }
+  .warning-text ol { margin: 4px 0 0 14px; }
+  .divider { border: none; border-top: 1px solid #f1f5f9; margin: 10px 0; }
+  .btn-row { display: flex; flex-direction: column; gap: 6px; }
+  .btn {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0;
+    background: #f8fafc; color: #475569; cursor: pointer; font-size: 12px;
+    font-weight: 500; text-align: left; width: 100%; transition: all 0.12s;
+  }
+  .btn:hover { background: #eff6ff; border-color: #bfdbfe; color: #3b82f6; }
+  .btn-icon { font-size: 14px; }
+  #provider-status { font-size: 11px; color: #94a3b8; margin-top: 10px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="header">
+  <span class="header-icon">✦</span>
+  <div class="header-text">
+    <div class="header-title">AI Assist</div>
+    <div class="header-sub">ManualToolsSet</div>
+  </div>
+</div>
+
+<div class="body">
+  <div id="app-section" style="display:none">
+    <div class="status-row">
+      <div class="status-dot green" id="status-dot"></div>
+      <span class="status-label" id="status-label">Active on this page</span>
+    </div>
+    <div class="app-badge" id="app-name">Detecting...</div>
+  </div>
+
+  <div id="warning-section" style="display:none" class="warning">
+    <div class="warning-title">⚠ Enable file:// access</div>
+    <div class="warning-text">
+      <ol>
+        <li>Go to chrome://extensions</li>
+        <li>Find AI Assist → Details</li>
+        <li>Enable "Allow access to file URLs"</li>
+      </ol>
+    </div>
+  </div>
+
+  <div id="no-key-section" style="display:none" class="warning">
+    <div class="warning-title">No AI provider configured</div>
+    <div class="warning-text">Open Options to add your Gemini API key or configure Ollama.</div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="btn-row">
+    <button class="btn" id="open-options">
+      <span class="btn-icon">⚙</span> Options &amp; API Key
+    </button>
+  </div>
+
+  <div id="provider-status"></div>
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>
